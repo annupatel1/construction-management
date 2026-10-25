@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -14,8 +15,8 @@ public class ExpenseResponse {
     int id;
     int projectId;
     String category;
-    double amount;
-    double quantity;
+    BigDecimal amount;
+    BigDecimal quantity;
     String unit;
     LocalDate purchaseDate;
 

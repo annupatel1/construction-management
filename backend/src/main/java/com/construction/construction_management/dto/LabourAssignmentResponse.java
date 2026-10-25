@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -14,9 +15,9 @@ public class LabourAssignmentResponse {
     int id;
     UserResponse labour;
     ProjectResponse project;
-    double dailyRate;
+    BigDecimal dailyRate;
     String status;
-    double advanceTaken;
+    BigDecimal advanceTaken;
     LocalDate assignedDate;
 
     public static LabourAssignmentResponse from(LabourAssignment a) {

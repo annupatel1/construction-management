@@ -1,5 +1,6 @@
 package com.construction.construction_management.security;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,18 +35,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String token = authHeader.substring(7);
-            if (jwtUtil.isTokenValid(token)) {
-                try {
-                    UserDetails userDetails = userDetailsService.loadUserById(jwtUtil.extractUserId(token));
-                    if (userDetails.isEnabled()) {
-                        UsernamePasswordAuthenticationToken authToken =
-                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(authToken);
-                    }
-                } catch (UsernameNotFoundException | NumberFormatException ignored) {
-                    // user was deleted after the token was issued: continue unauthenticated (-> 401)
+            try {
+                Claims claims = jwtUtil.parse(token);
+                UserDetails userDetails = userDetailsService.loadUserById(jwtUtil.extractUserId(claims));
+                if (userDetails instanceof CustomUserDetails details
+                        && details.getUser().getTokenVersion() == jwtUtil.extractTokenVersion(claims)
+                        && userDetails.isEnabled()) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
+            } catch (Exception ignored) {
+                // invalid signature, expiry, deleted user or revoked token: continue unauthenticated (-> 401)
             }
         }
 

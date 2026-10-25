@@ -1,5 +1,6 @@
 package com.construction.construction_management.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,8 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
+    private static final String TOKEN_VERSION_CLAIM = "ver";
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -23,31 +26,34 @@ public class JwtUtil {
     }
 
     /** The token subject is the user id, because users can log in with phone OR email. */
-    public String generateToken(int userId) {
+    public String generateToken(int userId, int tokenVersion) {
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim(TOKEN_VERSION_CLAIM, tokenVersion)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getKey())
                 .compact();
     }
 
-    public int extractUserId(String token) {
-        String subject = Jwts.parser()
+    /**
+     * Verifies the signature and expiry, then returns the claims. Throws a JWT exception when the
+     * token is invalid, so callers can treat every failure as "not logged in".
+     */
+    public Claims parse(String token) {
+        return Jwts.parser()
                 .verifyWith(getKey())
                 .build()
                 .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
-        return Integer.parseInt(subject);
+                .getPayload();
     }
 
-    public boolean isTokenValid(String token) {
-        try {
-            Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+    public int extractUserId(Claims claims) {
+        return Integer.parseInt(claims.getSubject());
+    }
+
+    public int extractTokenVersion(Claims claims) {
+        Integer version = claims.get(TOKEN_VERSION_CLAIM, Integer.class);
+        return version == null ? 0 : version;
     }
 }

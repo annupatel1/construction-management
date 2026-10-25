@@ -1,5 +1,7 @@
 package com.construction.construction_management.entity;
 
+import java.math.BigDecimal;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -27,9 +29,11 @@ public class Expense {
     @Enumerated(EnumType.STRING)
     MaterialCategory category;
 
-    double amount;
+    @Column(precision = 14, scale = 2)
+    BigDecimal amount;
 
-    double quantity;
+    @Column(precision = 14, scale = 3)
+    BigDecimal quantity;
 
     String unit;
 

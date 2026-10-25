@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -17,9 +18,11 @@ public class ProjectRequest {
     @NotBlank(message = "Location is required")
     String location;
     @Positive(message = "Area must be greater than 0")
-    double areaSqFt;
+    @NotNull(message = "areaSqFt is required")
+    BigDecimal areaSqFt;
     @Positive(message = "Rate per sq ft must be greater than 0")
-    double ratePerSqFt;
+    @NotNull(message = "ratePerSqFt is required")
+    BigDecimal ratePerSqFt;
     @NotNull(message = "Contract type is required")
     ContractType contractType;
     @NotNull(message = "Start date is required")

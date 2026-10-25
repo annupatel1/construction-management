@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -15,9 +16,11 @@ public class ExpenseRequest {
     @NotNull(message = "Category is required")
     MaterialCategory category;
     @Positive(message = "Amount must be greater than 0")
-    double amount;
+    @NotNull(message = "amount is required")
+    BigDecimal amount;
     @Positive(message = "Quantity must be greater than 0")
-    double quantity;
+    @NotNull(message = "quantity is required")
+    BigDecimal quantity;
     @NotBlank(message = "Unit is required")
     String unit;
     @NotNull(message = "Purchase date is required")

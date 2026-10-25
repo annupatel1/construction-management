@@ -1,5 +1,7 @@
 package com.construction.construction_management.entity;
 
+import java.math.BigDecimal;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -24,7 +26,8 @@ public class Payment {
     @ManyToOne
     Project project;
 
-    double amount;
+    @Column(precision = 14, scale = 2)
+    BigDecimal amount;
 
     LocalDate paymentDate;
 

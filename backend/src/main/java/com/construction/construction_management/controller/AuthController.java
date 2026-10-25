@@ -55,4 +55,10 @@ public class AuthController {
     public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return authService.resetPassword(request);
     }
+
+    /** Requires a valid token; invalidates every token for this account. */
+    @PostMapping("/logout")
+    public MessageResponse logout() {
+        return authService.logout();
+    }
 }

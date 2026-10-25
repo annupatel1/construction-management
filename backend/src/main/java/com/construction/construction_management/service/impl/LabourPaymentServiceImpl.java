@@ -7,8 +7,10 @@ import com.construction.construction_management.entity.LabourPayment;
 import com.construction.construction_management.entity.LabourPaymentType;
 import com.construction.construction_management.repository.LabourPaymentRepository;
 import com.construction.construction_management.service.AccessGuard;
+import com.construction.construction_management.service.AuditService;
 import com.construction.construction_management.service.LabourPaymentService;
 import org.springframework.stereotype.Service;
+import com.construction.construction_management.util.Money;
 
 import java.util.List;
 
@@ -17,10 +19,13 @@ public class LabourPaymentServiceImpl implements LabourPaymentService {
 
     private final LabourPaymentRepository labourPaymentRepository;
     private final AccessGuard guard;
+    private final AuditService auditService;
 
-    public LabourPaymentServiceImpl(LabourPaymentRepository labourPaymentRepository, AccessGuard guard) {
+    public LabourPaymentServiceImpl(LabourPaymentRepository labourPaymentRepository, AccessGuard guard,
+                                    AuditService auditService) {
         this.labourPaymentRepository = labourPaymentRepository;
         this.guard = guard;
+        this.auditService = auditService;
     }
 
     private LabourPaymentResponse toResponse(LabourPayment p) {
@@ -41,12 +46,16 @@ public class LabourPaymentServiceImpl implements LabourPaymentService {
 
         LabourPayment p = new LabourPayment();
         p.setLabourAssignment(assignment);
-        p.setAmount(request.getAmount());
+        p.setAmount(Money.money(request.getAmount()));
         p.setPaymentDate(request.getPaymentDate());
         p.setMode(request.getMode());
         p.setType(request.getType() == null ? LabourPaymentType.WAGE : request.getType());
         p.setRemarks(request.getRemarks());
-        return toResponse(labourPaymentRepository.save(p));
+        LabourPayment saved = labourPaymentRepository.save(p);
+        auditService.record("LABOUR_PAYMENT_RECORDED", "LabourPayment", saved.getId(),
+                "assignmentId=" + assignmentId + "; amount=" + saved.getAmount()
+                        + "; type=" + saved.getType() + "; mode=" + saved.getMode());
+        return toResponse(saved);
     }
 
     @Override

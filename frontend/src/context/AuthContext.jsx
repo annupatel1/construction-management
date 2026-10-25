@@ -8,6 +8,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(!!localStorage.getItem(TOKEN_KEY))
 
   const logout = useCallback(() => {
+    const token = localStorage.getItem(TOKEN_KEY)
+    // Revoke server-side before dropping the local token. A failure here (offline,
+    // already-expired token) must not stop the local logout.
+    if (token) {
+      api.post('/api/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+    }
     localStorage.removeItem(TOKEN_KEY)
     setUser(null)
   }, [])

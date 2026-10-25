@@ -10,9 +10,12 @@ import com.construction.construction_management.exception.BadRequestException;
 import com.construction.construction_management.exception.ConflictException;
 import com.construction.construction_management.repository.AttendanceRepository;
 import com.construction.construction_management.service.AccessGuard;
+import com.construction.construction_management.service.AuditService;
 import com.construction.construction_management.service.AttendanceService;
 import org.springframework.stereotype.Service;
+import com.construction.construction_management.util.Money;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -21,10 +24,13 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final AccessGuard guard;
+    private final AuditService auditService;
 
-    public AttendanceServiceImpl(AttendanceRepository attendanceRepository, AccessGuard guard) {
+    public AttendanceServiceImpl(AttendanceRepository attendanceRepository, AccessGuard guard,
+                                 AuditService auditService) {
         this.attendanceRepository = attendanceRepository;
         this.guard = guard;
+        this.auditService = auditService;
     }
 
     private AttendanceResponse toResponse(Attendance a) {
@@ -56,9 +62,14 @@ public class AttendanceServiceImpl implements AttendanceService {
         attendance.setDate(request.getDate());
         attendance.setStatus(request.getStatus());
         // overtime hours only make sense on an OVERTIME day
-        attendance.setOvertimeHours(request.getStatus() == AttendanceStatus.OVERTIME ? request.getOvertimeHours() : 0);
+        attendance.setOvertimeHours(request.getStatus() == AttendanceStatus.OVERTIME
+                ? Money.money(request.getOvertimeHours()) : BigDecimal.ZERO);
 
-        return toResponse(attendanceRepository.save(attendance));
+        Attendance saved = attendanceRepository.save(attendance);
+        auditService.record("ATTENDANCE_MARKED", "Attendance", saved.getId(),
+                "assignmentId=" + assignmentId + "; date=" + saved.getDate()
+                        + "; status=" + saved.getStatus() + "; overtimeHours=" + saved.getOvertimeHours());
+        return toResponse(saved);
     }
 
     @Override

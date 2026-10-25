@@ -6,8 +6,10 @@ import com.construction.construction_management.entity.Payment;
 import com.construction.construction_management.entity.Project;
 import com.construction.construction_management.repository.PaymentRepository;
 import com.construction.construction_management.service.AccessGuard;
+import com.construction.construction_management.service.AuditService;
 import com.construction.construction_management.service.PaymentService;
 import org.springframework.stereotype.Service;
+import com.construction.construction_management.util.Money;
 
 import java.util.List;
 
@@ -16,10 +18,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final AccessGuard guard;
+    private final AuditService auditService;
 
-    public PaymentServiceImpl(PaymentRepository paymentRepository, AccessGuard guard) {
+    public PaymentServiceImpl(PaymentRepository paymentRepository, AccessGuard guard,
+                              AuditService auditService) {
         this.paymentRepository = paymentRepository;
         this.guard = guard;
+        this.auditService = auditService;
     }
 
     private PaymentResponse toResponse(Payment p) {
@@ -39,11 +44,14 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment p = new Payment();
         p.setProject(project);
-        p.setAmount(request.getAmount());
+        p.setAmount(Money.money(request.getAmount()));
         p.setPaymentDate(request.getPaymentDate());
         p.setMode(request.getMode());
         p.setRemarks(request.getRemarks());
-        return toResponse(paymentRepository.save(p));
+        Payment saved = paymentRepository.save(p);
+        auditService.record("PAYMENT_RECORDED", "Payment", saved.getId(),
+                "projectId=" + projectId + "; amount=" + saved.getAmount() + "; mode=" + saved.getMode());
+        return toResponse(saved);
     }
 
     @Override

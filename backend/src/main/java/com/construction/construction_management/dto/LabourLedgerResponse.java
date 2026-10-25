@@ -1,5 +1,7 @@
 package com.construction.construction_management.dto;
 
+import java.math.BigDecimal;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,13 +21,13 @@ public class LabourLedgerResponse {
     /** true when the worker has registered in the app (can log in and see their own work). */
     boolean registered;
 
-    double daysWorked;
-    double overtimeHours;
-    double totalEarned;
-    double totalAdvance;
-    double totalPaid;
+    BigDecimal daysWorked;
+    BigDecimal overtimeHours;
+    BigDecimal totalEarned;
+    BigDecimal totalAdvance;
+    BigDecimal totalPaid;
     /** earned - advance - paid (negative means the worker has been overpaid). */
-    double pending;
+    BigDecimal pending;
     int activeSites;
     List<Site> sites;
 
@@ -38,12 +40,12 @@ public class LabourLedgerResponse {
         String projectTitle;
         String projectLocation;
         String status;
-        double dailyRate;
-        double days;
-        double overtimeHours;
-        double earned;
-        double advance;
-        double paid;
-        double pending;
+        BigDecimal dailyRate;
+        BigDecimal days;
+        BigDecimal overtimeHours;
+        BigDecimal earned;
+        BigDecimal advance;
+        BigDecimal paid;
+        BigDecimal pending;
     }
 }

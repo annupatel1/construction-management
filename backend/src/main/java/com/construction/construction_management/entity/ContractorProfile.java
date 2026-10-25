@@ -1,5 +1,7 @@
 package com.construction.construction_management.entity;
 
+import java.math.BigDecimal;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,9 +23,9 @@ public class ContractorProfile {
     User user;
 
     int experienceYears;
-    double ratePerSqFt;
+    @Column(precision = 12, scale = 2)
+    BigDecimal ratePerSqFt;
     boolean isVerified;
-    String aadharNumber;
     String bio;
 
     String city;

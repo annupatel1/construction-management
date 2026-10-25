@@ -3,6 +3,7 @@ package com.construction.construction_management.controller;
 import com.construction.construction_management.dto.ProjectRequest;
 import com.construction.construction_management.dto.ProjectResponse;
 import com.construction.construction_management.dto.ProjectStatusRequest;
+import com.construction.construction_management.util.Pages;
 import com.construction.construction_management.service.ProjectService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,8 +38,10 @@ public class ProjectController {
 
     /** Projects belonging to the logged-in user. */
     @GetMapping
-    public List<ProjectResponse> getMyProjects() {
-        return projectService.getMyProjects();
+    public List<ProjectResponse> getMyProjects(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return projectService.getMyProjects(Pages.of(page, size));
     }
 
     @GetMapping("/{id}")

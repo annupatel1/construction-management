@@ -1,6 +1,7 @@
 package com.construction.construction_management.controller;
 
 import com.construction.construction_management.dto.UserResponse;
+import com.construction.construction_management.util.Pages;
 import com.construction.construction_management.service.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +26,10 @@ public class UserController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
-    public List<UserResponse> getAllUsers() {
-        return userService.getAllUsers();
+    public List<UserResponse> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return userService.getAllUsers(Pages.of(page, size));
     }
 
     @GetMapping("/{id}")

@@ -9,10 +9,15 @@ import com.construction.construction_management.repository.LabourAssignmentRepos
 import com.construction.construction_management.repository.ProjectRepository;
 import com.construction.construction_management.repository.UserRepository;
 import com.construction.construction_management.security.CurrentUser;
+import com.construction.construction_management.service.AuditService;
 import com.construction.construction_management.service.AccessGuard;
 import com.construction.construction_management.service.ProjectService;
+import com.construction.construction_management.util.Money;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -23,17 +28,20 @@ public class ProjectServiceImpl implements ProjectService {
     private final LabourAssignmentRepository assignmentRepository;
     private final CurrentUser currentUser;
     private final AccessGuard guard;
+    private final AuditService auditService;
 
     public ProjectServiceImpl(ProjectRepository projectRepository,
                               UserRepository userRepository,
                               LabourAssignmentRepository assignmentRepository,
                               CurrentUser currentUser,
-                              AccessGuard guard) {
+                              AccessGuard guard,
+                              AuditService auditService) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.assignmentRepository = assignmentRepository;
         this.currentUser = currentUser;
         this.guard = guard;
+        this.auditService = auditService;
     }
 
     @Override
@@ -54,15 +62,20 @@ public class ProjectServiceImpl implements ProjectService {
         project.setContractor(contractor);
         project.setTitle(request.getTitle().trim());
         project.setLocation(request.getLocation().trim());
-        project.setAreaSqFt(request.getAreaSqFt());
-        project.setRatePerSqFt(request.getRatePerSqFt());
-        project.setTotalEstimatedCost(request.getAreaSqFt() * request.getRatePerSqFt());
+        BigDecimal area = Money.money(request.getAreaSqFt());
+        BigDecimal rate = Money.money(request.getRatePerSqFt());
+        project.setAreaSqFt(area);
+        project.setRatePerSqFt(rate);
+        project.setTotalEstimatedCost(Money.multiply(area, rate));
         project.setContractType(request.getContractType());
         project.setStatus(ProjectStatus.ONGOING);
         project.setStartDate(request.getStartDate());
         project.setEndDate(request.getEndDate());
 
-        return ProjectResponse.from(projectRepository.save(project));
+        Project saved = projectRepository.save(project);
+        auditService.record("PROJECT_CREATED", "Project", saved.getId(),
+                "title=" + saved.getTitle() + "; contractType=" + saved.getContractType());
+        return ProjectResponse.from(saved);
     }
 
     @Override
@@ -70,7 +83,10 @@ public class ProjectServiceImpl implements ProjectService {
         Project project = buildProject(request);
         project.setHouseOwner(null);
         project.setContractor(currentUser.get());
-        return ProjectResponse.from(projectRepository.save(project));
+        Project saved = projectRepository.save(project);
+        auditService.record("PROJECT_CREATED", "Project", saved.getId(),
+                "title=" + saved.getTitle() + "; contractType=" + saved.getContractType());
+        return ProjectResponse.from(saved);
     }
 
     private Project buildProject(ProjectRequest request) {
@@ -81,9 +97,11 @@ public class ProjectServiceImpl implements ProjectService {
         Project project = new Project();
         project.setTitle(request.getTitle().trim());
         project.setLocation(request.getLocation().trim());
-        project.setAreaSqFt(request.getAreaSqFt());
-        project.setRatePerSqFt(request.getRatePerSqFt());
-        project.setTotalEstimatedCost(request.getAreaSqFt() * request.getRatePerSqFt());
+        BigDecimal area = Money.money(request.getAreaSqFt());
+        BigDecimal rate = Money.money(request.getRatePerSqFt());
+        project.setAreaSqFt(area);
+        project.setRatePerSqFt(rate);
+        project.setTotalEstimatedCost(Money.multiply(area, rate));
         project.setContractType(request.getContractType());
         project.setStatus(ProjectStatus.ONGOING);
         project.setStartDate(request.getStartDate());
@@ -93,18 +111,15 @@ public class ProjectServiceImpl implements ProjectService {
 
     /** Projects that belong to the logged-in user, depending on their role. */
     @Override
-    public List<ProjectResponse> getMyProjects() {
+    public List<ProjectResponse> getMyProjects(Pageable pageable) {
         int id = currentUser.id();
-        List<Project> projects = switch (currentUser.role()) {
-            case HOUSE_OWNER -> projectRepository.findByHouseOwnerId(id);
-            case CONTRACTOR -> projectRepository.findByContractorId(id);
-            case LABOUR -> assignmentRepository.findByLabourId(id).stream()
-                    .map(LabourAssignment::getProject)
-                    .distinct()
-                    .toList();
-            case ADMIN -> projectRepository.findAll();
+        Page<Project> projects = switch (currentUser.role()) {
+            case HOUSE_OWNER -> projectRepository.findByHouseOwnerId(id, pageable);
+            case CONTRACTOR -> projectRepository.findByContractorId(id, pageable);
+            case LABOUR -> assignmentRepository.findDistinctProjectsByLabourId(id, pageable);
+            case ADMIN -> projectRepository.findAll(pageable);
         };
-        return projects.stream().map(ProjectResponse::from).toList();
+        return projects.map(ProjectResponse::from).getContent();
     }
 
     @Override
@@ -116,6 +131,8 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectResponse updateStatus(int id, ProjectStatus status) {
         Project project = guard.projectForOwnerOrContractor(id);
         project.setStatus(status);
-        return ProjectResponse.from(projectRepository.save(project));
+        Project saved = projectRepository.save(project);
+        auditService.record("PROJECT_STATUS_CHANGED", "Project", id, "status=" + status);
+        return ProjectResponse.from(saved);
     }
 }

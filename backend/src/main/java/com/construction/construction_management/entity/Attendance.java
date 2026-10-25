@@ -1,5 +1,7 @@
 package com.construction.construction_management.entity;
 
+import java.math.BigDecimal;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -29,6 +31,7 @@ public class Attendance {
     @Enumerated(EnumType.STRING)
     AttendanceStatus status;
 
-    double overtimeHours;
+    @Column(precision = 6, scale = 2)
+    BigDecimal overtimeHours;
 
 }

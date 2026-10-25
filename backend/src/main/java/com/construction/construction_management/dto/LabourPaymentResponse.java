@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -13,7 +14,7 @@ public class LabourPaymentResponse {
 
     int id;
     int labourAssignmentId;
-    double amount;
+    BigDecimal amount;
     LocalDate paymentDate;
     String mode;
     String type;

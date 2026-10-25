@@ -6,6 +6,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -16,5 +17,6 @@ public class AttendanceRequest {
     @NotNull(message = "Status is required")
     AttendanceStatus status;
     @PositiveOrZero(message = "Overtime hours cannot be negative")
-    double overtimeHours;
+    @NotNull(message = "overtimeHours is required")
+    BigDecimal overtimeHours = BigDecimal.ZERO;
 }

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -12,11 +13,11 @@ import java.time.LocalDate;
 public class ProjectRequirementResponse {
 
     int id;
-    UserResponse houseOwner;
+    DirectoryUserResponse houseOwner;
     String city;
     String area;
     String pincode;
-    double areaSqFt;
+    BigDecimal areaSqFt;
     String contractType;
     String description;
     String status;

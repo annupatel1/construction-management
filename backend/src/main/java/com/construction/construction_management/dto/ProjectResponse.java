@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -12,13 +13,13 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class ProjectResponse {
     int id;
-    UserResponse houseOwner;
-    UserResponse contractor;
+    DirectoryUserResponse houseOwner;
+    DirectoryUserResponse contractor;
     String title;
     String location;
-    double areaSqFt;
-    double ratePerSqFt;
-    double totalEstimatedCost;
+    BigDecimal areaSqFt;
+    BigDecimal ratePerSqFt;
+    BigDecimal totalEstimatedCost;
     String contractType;
     String status;
     LocalDate startDate;
@@ -27,8 +28,8 @@ public class ProjectResponse {
     public static ProjectResponse from(Project p) {
         return new ProjectResponse(
                 p.getId(),
-                p.getHouseOwner() == null ? null : UserResponse.from(p.getHouseOwner()),
-                p.getContractor() == null ? null : UserResponse.from(p.getContractor()),
+                p.getHouseOwner() == null ? null : DirectoryUserResponse.from(p.getHouseOwner()),
+                p.getContractor() == null ? null : DirectoryUserResponse.from(p.getContractor()),
                 p.getTitle(),
                 p.getLocation(),
                 p.getAreaSqFt(),

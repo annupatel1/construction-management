@@ -7,13 +7,15 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
 @Setter
 public class LabourPaymentRequest {
     @Positive(message = "Amount must be greater than 0")
-    double amount;
+    @NotNull(message = "amount is required")
+    BigDecimal amount;
     @NotNull(message = "Payment date is required")
     LocalDate paymentDate;
     @NotNull(message = "Payment mode is required")

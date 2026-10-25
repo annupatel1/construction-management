@@ -23,4 +23,7 @@ public interface AuthService {
     // --- logged-in user: add / change / verify email
     OtpSentResponse changeEmail(EmailRequest request);
     UserResponse verifyEmail(OtpOnlyRequest request);
+
+    // --- revoke all tokens issued to the current account
+    MessageResponse logout();
 }

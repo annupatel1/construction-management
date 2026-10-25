@@ -1,5 +1,7 @@
 package com.construction.construction_management.entity;
 
+import java.math.BigDecimal;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -29,9 +31,12 @@ public class Project {
 
     String title;
     String location;
-    double areaSqFt;
-    double ratePerSqFt;
-    double totalEstimatedCost;
+    @Column(precision = 12, scale = 2)
+    BigDecimal areaSqFt;
+    @Column(precision = 12, scale = 2)
+    BigDecimal ratePerSqFt;
+    @Column(precision = 14, scale = 2)
+    BigDecimal totalEstimatedCost;
 
     @Enumerated(EnumType.STRING)
     ContractType contractType;

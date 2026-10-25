@@ -1,25 +1,97 @@
-# Construction Site Management System
+# BuildTrack Backend
 
-A full-stack Spring Boot backend for a construction marketplace connecting House Owners, Contractors, and Labourers — built with role-based access control, JWT authentication, and a proper layered architecture.
+Spring Boot REST API for a construction marketplace connecting House Owners, Contractors, and
+Labourers. Role-based access control, JWT authentication, OTP verification, and a MySQL schema
+owned by Flyway migrations.
 
 ## Overview
 
-This platform models a real-world construction workflow:
-- **House Owners** post project requirements or hire contractors directly, and track payments made.
-- **Contractors** browse/take up projects, assign labourers, mark daily attendance, log material expenses, and pay wages.
-- **Labourers** get assigned to projects with a daily rate, tracked attendance, and advance/wage payments.
+- **House Owners** post requirements, hire contractors, and track payments.
+- **Contractors** run sites, assign labour, mark attendance, log material expenses, and pay wages.
+- **Labourers** see assigned sites, attendance, and wage balances.
+- Two contract types: **Labour Only** (owner supplies material) and **Labour + Material**
+  (contractor supplies material).
 
-The system supports two contract types — **Labour Only** (owner supplies material) and **Labour + Material** (contractor supplies material) — which affects how project costs and profit are calculated.
+## Tech stack
 
-## Tech Stack
+- Java 21, Spring Boot 4.1.1
+- Spring Security, stateless JWT, BCrypt passwords
+- Spring Data JPA / Hibernate with `ddl-auto=none`
+- Flyway migrations (MySQL in production, H2 MySQL mode in tests)
+- Maven, Lombok
 
-- **Java 21**, **Spring Boot 4.1.1**
-- **Spring Security** with **JWT** authentication (stateless, BCrypt password hashing)
-- **Spring Data JPA** + **Hibernate** (MySQL)
-- **Role-based access control** via `@PreAuthorize`
-- **Maven** for build management
-- **Lombok** for boilerplate reduction
+## Run locally
 
-## Architecture
+Requirements: Java 21, Maven, MySQL 8.
 
-The project follows a standard layered architecture:
+```bash
+mysql -uroot -p -e "CREATE DATABASE construction_management_db CHARACTER SET utf8mb4;"
+cd backend
+export DB_URL="jdbc:mysql://localhost:3306/construction_management_db"
+export DB_USERNAME=root
+export DB_PASSWORD=root
+./mvnw spring-boot:run
+```
+
+Flyway runs automatically on startup. The API listens on `http://localhost:8080`.
+In development, OTP codes are printed in the server log (`OTP_*_DELIVERY=CONSOLE`).
+
+## Database migrations
+
+Migrations live in `src/main/resources/db/migration`:
+
+- `common/` — shared baseline and audit table
+- `mysql/` — production upgrades
+- `h2/` — the same upgrades, written for the H2 test database
+
+```properties
+spring.flyway.locations=classpath:db/migration/common,classpath:db/migration/{vendor}
+spring.flyway.baseline-on-migrate=true
+spring.flyway.baseline-version=1
+```
+
+A fresh database runs `V1` and then the vendor migrations. An existing database created by the old
+`ddl-auto=update` setup is baselined at `V1` and then receives the vendor migrations. Never edit a
+migration that has already run in an environment; add a new one instead.
+
+## Tests
+
+```bash
+./mvnw test     # unit + H2 integration tests through the real Flyway migrations
+./mvnw verify   # tests plus the packaged jar
+```
+
+The test profile (`src/test/resources/application-test.properties`) uses an in-memory H2 database in
+MySQL mode, so no MySQL server or Docker is needed for CI.
+
+## Production profile
+
+Start with `SPRING_PROFILES_ACTIVE=prod` and provide the environment variables read by
+`src/main/resources/application-prod.properties`:
+
+| Variable | Purpose |
+| --- | --- |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | MySQL connection |
+| `JWT_SECRET` | 32+ character HMAC key |
+| `OTP_SECRET` | 32+ character OTP hashing key |
+| `OTP_PHONE_DELIVERY`, `OTP_EMAIL_DELIVERY` | `SMS` / `EMAIL`, never `CONSOLE` |
+| `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | SMS delivery |
+| `SPRING_MAIL_*`, `MAIL_FROM` | SMTP delivery |
+| `CORS_ORIGINS` | Comma-separated frontend origins |
+
+`ProductionConfigCheck` fails startup if secrets are weak or console OTP delivery is enabled.
+
+## Security and data integrity baseline
+
+- Money and quantities use `BigDecimal` and `DECIMAL` columns; rounding is centralised in
+  `util/Money`.
+- Passwords are BCrypt-hashed; registration cannot create an `ADMIN`.
+- JWT tokens carry a per-account token version. Logout, password reset, and suspension invalidate
+  old tokens; suspended/deleted accounts cannot authenticate.
+- Password login is throttled per phone/email; OTPs are HMAC-hashed, single-use, expiring, and rate
+  limited.
+- Attendance is unique per labour assignment and date at the database level.
+- Public requirement, project, and directory payloads use `DirectoryUserResponse` (no email or login
+  data). Aadhaar fields were removed.
+- Financial and status changes are written to the admin-only audit table (`/api/admin/audit`).
+- List endpoints are bounded (default 50, maximum 100 per page).

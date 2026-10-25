@@ -1,6 +1,7 @@
 package com.construction.construction_management.service.impl;
 
 import com.construction.construction_management.dto.*;
+import com.construction.construction_management.entity.AccountStatus;
 import com.construction.construction_management.entity.OtpPurpose;
 import com.construction.construction_management.entity.Role;
 import com.construction.construction_management.entity.RoleName;
@@ -13,6 +14,7 @@ import com.construction.construction_management.repository.RoleRepository;
 import com.construction.construction_management.repository.UserRepository;
 import com.construction.construction_management.security.CurrentUser;
 import com.construction.construction_management.security.JwtUtil;
+import com.construction.construction_management.security.LoginAttemptService;
 import com.construction.construction_management.service.AuthService;
 import com.construction.construction_management.util.Identifier;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final OtpService otpService;
     private final CurrentUser currentUser;
+    private final LoginAttemptService loginAttempts;
 
     public AuthServiceImpl(UserRepository userRepository,
                            RoleRepository roleRepository,
@@ -43,7 +46,8 @@ public class AuthServiceImpl implements AuthService {
                            AuthenticationManager authenticationManager,
                            JwtUtil jwtUtil,
                            OtpService otpService,
-                           CurrentUser currentUser) {
+                           CurrentUser currentUser,
+                           LoginAttemptService loginAttempts) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
@@ -51,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
         this.jwtUtil = jwtUtil;
         this.otpService = otpService;
         this.currentUser = currentUser;
+        this.loginAttempts = loginAttempts;
     }
 
     // ------------------------------------------------------------------ helpers
@@ -60,7 +65,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthResponse authResponse(User user, String message) {
-        return new AuthResponse(jwtUtil.generateToken(user.getId()), message, UserResponse.from(user));
+        if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+            throw new BadCredentialsException("Invalid credentials");
+        }
+        return new AuthResponse(jwtUtil.generateToken(user.getId(), user.getTokenVersion()), message,
+                UserResponse.from(user));
     }
 
     private Optional<User> find(Identifier id) {
@@ -69,7 +78,9 @@ public class AuthServiceImpl implements AuthService {
 
     /** A user may use an identifier for OTP login / reset only if that identifier is verified. */
     private boolean eligible(User user, Identifier id) {
-        return user.isPhoneVerified() && (id.isPhone() || user.isEmailVerified());
+        return user.isPhoneVerified()
+                && user.getAccountStatus() == AccountStatus.ACTIVE
+                && (id.isPhone() || user.isEmailVerified());
     }
 
     /**
@@ -159,22 +170,34 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
         Identifier id = Identifier.parse(request.getIdentifier());
+        String attemptKey = id.email() ? "email:" + id.value() : "phone:" + id.value();
+        loginAttempts.checkAllowed(attemptKey);
 
-        User user = find(id).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
-        if (id.email() && !user.isEmailVerified()) {
-            // an unverified email cannot be used to log in
-            throw new BadCredentialsException("Invalid credentials");
+        try {
+            User user = find(id).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+            if (id.email() && !user.isEmailVerified()) {
+                // an unverified email cannot be used to log in
+                throw new BadCredentialsException("Invalid credentials");
+            }
+            if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+                // do not reveal that the account exists but is suspended
+                throw new BadCredentialsException("Invalid credentials");
+            }
+            if (user.getPassword() == null || user.getPassword().isBlank()) {
+                // a worker added by a contractor has no password until they register
+                throw new BadCredentialsException("Invalid credentials");
+            }
+
+            // Throws BadCredentialsException for a wrong password, DisabledException if the phone is not verified yet.
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(user.getPhone(), request.getPassword()));
+
+            loginAttempts.clear(attemptKey);
+            return authResponse(user, "Login successful");
+        } catch (RuntimeException ex) {
+            loginAttempts.recordFailure(attemptKey);
+            throw ex;
         }
-        if (user.getPassword() == null || user.getPassword().isBlank()) {
-            // a worker added by a contractor has no password until they register
-            throw new BadCredentialsException("Invalid credentials");
-        }
-
-        // Throws BadCredentialsException for a wrong password, DisabledException if the phone is not verified yet.
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(user.getPhone(), request.getPassword()));
-
-        return authResponse(user, "Login successful");
     }
 
     // ------------------------------------------------------------ login with OTP
@@ -215,6 +238,8 @@ public class AuthServiceImpl implements AuthService {
                 .filter(u -> eligible(u, id))
                 .orElseThrow(() -> new BadRequestException("Invalid or expired code. Please request a new one."));
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // a password reset must also log out every old session
+        user.setTokenVersion(user.getTokenVersion() + 1);
         userRepository.save(user);
         return new MessageResponse("Password changed. You can now log in with your new password.");
     }
@@ -228,6 +253,16 @@ public class AuthServiceImpl implements AuthService {
         boolean deliver = find(id).map(u -> eligible(u, id)).orElse(false);
         otpService.issue(id, purpose, deliver);
         return sent(GENERIC_SENT, id);
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse logout() {
+        User user = userRepository.findById(currentUser.id())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setTokenVersion(user.getTokenVersion() + 1);
+        userRepository.save(user);
+        return new MessageResponse("You have been logged out on all devices.");
     }
 
     // ------------------------------------------------------------ email management

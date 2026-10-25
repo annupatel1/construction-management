@@ -13,8 +13,11 @@ import com.construction.construction_management.repository.LabourAssignmentRepos
 import com.construction.construction_management.repository.LabourPaymentRepository;
 import com.construction.construction_management.security.CurrentUser;
 import com.construction.construction_management.service.LabourLedgerService;
+import com.construction.construction_management.util.Money;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -24,7 +27,7 @@ import java.util.Map;
 @Service
 public class LabourLedgerServiceImpl implements LabourLedgerService {
 
-    private static final double OVERTIME_DIVISOR = 8;
+    private static final BigDecimal OVERTIME_DIVISOR = BigDecimal.valueOf(8);
 
     private final LabourAssignmentRepository assignmentRepository;
     private final AttendanceRepository attendanceRepository;
@@ -55,29 +58,30 @@ public class LabourLedgerServiceImpl implements LabourLedgerService {
             List<Attendance> attendance = attendanceRepository.findByLabourAssignmentId(assignment.getId());
             List<LabourPayment> payments = paymentRepository.findByLabourAssignmentId(assignment.getId());
 
-            double days = 0;
-            double overtimeHours = 0;
+            BigDecimal days = BigDecimal.ZERO;
+            BigDecimal overtimeHours = BigDecimal.ZERO;
             for (Attendance a : attendance) {
-                days += dayValue(a.getStatus());
+                days = days.add(dayValue(a.getStatus()));
                 if (a.getStatus() == AttendanceStatus.OVERTIME) {
-                    overtimeHours += a.getOvertimeHours();
+                    overtimeHours = overtimeHours.add(Money.nvl(a.getOvertimeHours()));
                 }
             }
 
-            double rate = assignment.getDailyRate();
-            double earned = days * rate + overtimeHours * (rate / OVERTIME_DIVISOR);
-            double advancePaidLater = 0;
-            double paid = 0;
+            BigDecimal rate = Money.nvl(assignment.getDailyRate());
+            BigDecimal overtimeRate = rate.divide(OVERTIME_DIVISOR, 4, RoundingMode.HALF_UP);
+            BigDecimal earned = Money.add(days.multiply(rate), overtimeHours.multiply(overtimeRate));
+            BigDecimal advancePaidLater = BigDecimal.ZERO;
+            BigDecimal paid = BigDecimal.ZERO;
             for (LabourPayment p : payments) {
                 if (p.getType() == LabourPaymentType.ADVANCE) {
-                    advancePaidLater += p.getAmount();
+                    advancePaidLater = Money.add(advancePaidLater, p.getAmount());
                 } else {
-                    paid += p.getAmount();
+                    paid = Money.add(paid, p.getAmount());
                 }
             }
 
-            double advance = assignment.getAdvanceTaken() + advancePaidLater;
-            double pending = earned - advance - paid;
+            BigDecimal advance = Money.add(assignment.getAdvanceTaken(), advancePaidLater);
+            BigDecimal pending = Money.subtract(Money.subtract(earned, advance), paid);
 
             LabourLedgerResponse.Site site = new LabourLedgerResponse.Site(
                     assignment.getId(),
@@ -85,7 +89,7 @@ public class LabourLedgerServiceImpl implements LabourLedgerService {
                     assignment.getProject().getTitle(),
                     assignment.getProject().getLocation(),
                     assignment.getStatus().toString(),
-                    rate,
+                    Money.money(rate),
                     days,
                     overtimeHours,
                     earned,
@@ -95,12 +99,12 @@ public class LabourLedgerServiceImpl implements LabourLedgerService {
             );
 
             totals.sites.add(site);
-            totals.days += days;
-            totals.overtimeHours += overtimeHours;
-            totals.earned += earned;
-            totals.advance += advance;
-            totals.paid += paid;
-            totals.pending += pending;
+            totals.days = totals.days.add(days);
+            totals.overtimeHours = totals.overtimeHours.add(overtimeHours);
+            totals.earned = Money.add(totals.earned, earned);
+            totals.advance = Money.add(totals.advance, advance);
+            totals.paid = Money.add(totals.paid, paid);
+            totals.pending = Money.add(totals.pending, pending);
             if (assignment.getStatus() == AssignmentStatus.ASSIGNED) {
                 totals.activeSites++;
             }
@@ -108,26 +112,30 @@ public class LabourLedgerServiceImpl implements LabourLedgerService {
 
         return byWorker.values().stream()
                 .map(WorkerTotals::toResponse)
-                .sorted(Comparator.comparingDouble(LabourLedgerResponse::getPending).reversed()
+                .sorted(Comparator.comparing((LabourLedgerResponse r) -> Money.nvl(r.getPending())).reversed()
                         .thenComparing(LabourLedgerResponse::getName))
                 .toList();
     }
 
-    private static double dayValue(AttendanceStatus status) {
-        if (status == AttendanceStatus.FULL_DAY || status == AttendanceStatus.OVERTIME) return 1;
-        if (status == AttendanceStatus.HALF_DAY) return 0.5;
-        return 0;
+    private static BigDecimal dayValue(AttendanceStatus status) {
+        if (status == AttendanceStatus.FULL_DAY || status == AttendanceStatus.OVERTIME) {
+            return BigDecimal.ONE;
+        }
+        if (status == AttendanceStatus.HALF_DAY) {
+            return new BigDecimal("0.5");
+        }
+        return BigDecimal.ZERO;
     }
 
     private static final class WorkerTotals {
         final User labour;
         final List<LabourLedgerResponse.Site> sites = new ArrayList<>();
-        double days;
-        double overtimeHours;
-        double earned;
-        double advance;
-        double paid;
-        double pending;
+        BigDecimal days = BigDecimal.ZERO;
+        BigDecimal overtimeHours = BigDecimal.ZERO;
+        BigDecimal earned = Money.zero();
+        BigDecimal advance = Money.zero();
+        BigDecimal paid = Money.zero();
+        BigDecimal pending = Money.zero();
         int activeSites;
 
         WorkerTotals(User labour) {

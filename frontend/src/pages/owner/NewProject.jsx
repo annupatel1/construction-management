@@ -7,6 +7,7 @@ import { useToast } from '../../context/ToastContext'
 import { useT } from '../../i18n/LanguageContext'
 import { LABELS, options } from '../../lib/labels'
 import { formatINR, todayISO } from '../../lib/format'
+import { round2 } from '../../lib/calc'
 import CallButton from '../../components/Contact'
 import { Alert, Button, Card, Input, PageHeader, Select, Spinner } from '../../components/ui'
 
@@ -44,7 +45,10 @@ export default function NewProject() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, isOwner])
 
-  const estimate = useMemo(() => (Number(form.areaSqFt) || 0) * (Number(form.ratePerSqFt) || 0), [form.areaSqFt, form.ratePerSqFt])
+  const estimate = useMemo(
+    () => round2((Number(form.areaSqFt) || 0) * (Number(form.ratePerSqFt) || 0)),
+    [form.areaSqFt, form.ratePerSqFt],
+  )
 
   const submit = async (e) => {
     e.preventDefault()

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -15,6 +16,6 @@ public class AttendanceResponse {
     int labourAssignmentId;
     LocalDate date;
     String status;
-    double overtimeHours;
+    BigDecimal overtimeHours;
 
 }

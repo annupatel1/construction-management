@@ -1,5 +1,7 @@
 package com.construction.construction_management.entity;
 
+import java.math.BigDecimal;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -25,8 +27,8 @@ public class LabourProfile {
     @Enumerated(EnumType.STRING)
     SkillType skillType;
 
-    double defaultDailyRate;
+    @Column(precision = 12, scale = 2)
+    BigDecimal defaultDailyRate;
     boolean isVerified;
-    String aadharNumber;
 
 }

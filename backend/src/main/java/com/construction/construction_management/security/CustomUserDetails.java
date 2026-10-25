@@ -1,5 +1,6 @@
 package com.construction.construction_management.security;
 
+import com.construction.construction_management.entity.AccountStatus;
 import com.construction.construction_management.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -39,6 +40,8 @@ public class CustomUserDetails implements UserDetails {
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
-    /** An account is usable only after its phone number was verified by OTP. */
-    @Override public boolean isEnabled() { return user.isPhoneVerified(); }
+    /** An account is usable only after phone verification and while it is active. */
+    @Override public boolean isEnabled() {
+        return user.isPhoneVerified() && user.getAccountStatus() == AccountStatus.ACTIVE;
+    }
 }

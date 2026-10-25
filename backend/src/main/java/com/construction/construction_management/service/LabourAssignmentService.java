@@ -1,5 +1,7 @@
 package com.construction.construction_management.service;
 
+import org.springframework.data.domain.Pageable;
+
 import com.construction.construction_management.dto.LabourAssignmentRequest;
 import com.construction.construction_management.dto.LabourAssignmentResponse;
 import com.construction.construction_management.dto.LabourAssignmentUpdateRequest;
@@ -11,6 +13,6 @@ public interface LabourAssignmentService {
     LabourAssignmentResponse assignLabour(int labourId, int projectId, LabourAssignmentRequest request);
     LabourAssignmentResponse updateAssignment(int assignmentId, LabourAssignmentUpdateRequest request);
     LabourAssignmentResponse updateStatus(int assignmentId, AssignmentStatus status);
-    List<LabourAssignmentResponse> getAssignmentsByProject(int projectId);
-    List<LabourAssignmentResponse> getMyAssignments();
+    List<LabourAssignmentResponse> getAssignmentsByProject(int projectId, Pageable pageable);
+    List<LabourAssignmentResponse> getMyAssignments(Pageable pageable);
 }

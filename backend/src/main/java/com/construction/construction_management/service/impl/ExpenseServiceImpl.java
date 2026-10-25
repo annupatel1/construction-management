@@ -6,8 +6,10 @@ import com.construction.construction_management.entity.Expense;
 import com.construction.construction_management.entity.Project;
 import com.construction.construction_management.repository.ExpenseRepository;
 import com.construction.construction_management.service.AccessGuard;
+import com.construction.construction_management.service.AuditService;
 import com.construction.construction_management.service.ExpenseService;
 import org.springframework.stereotype.Service;
+import com.construction.construction_management.util.Money;
 
 import java.util.List;
 
@@ -16,10 +18,13 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final AccessGuard guard;
+    private final AuditService auditService;
 
-    public ExpenseServiceImpl(ExpenseRepository expenseRepository, AccessGuard guard) {
+    public ExpenseServiceImpl(ExpenseRepository expenseRepository, AccessGuard guard,
+                              AuditService auditService) {
         this.expenseRepository = expenseRepository;
         this.guard = guard;
+        this.auditService = auditService;
     }
 
     private ExpenseResponse toResponse(Expense e) {
@@ -41,11 +46,15 @@ public class ExpenseServiceImpl implements ExpenseService {
         Expense e = new Expense();
         e.setProject(project);
         e.setCategory(request.getCategory());
-        e.setAmount(request.getAmount());
-        e.setQuantity(request.getQuantity());
+        e.setAmount(Money.money(request.getAmount()));
+        e.setQuantity(Money.quantity(request.getQuantity()));
         e.setUnit(request.getUnit().trim());
         e.setPurchaseDate(request.getPurchaseDate());
-        return toResponse(expenseRepository.save(e));
+        Expense saved = expenseRepository.save(e);
+        auditService.record("EXPENSE_RECORDED", "Expense", saved.getId(),
+                "projectId=" + projectId + "; amount=" + saved.getAmount()
+                        + "; category=" + saved.getCategory() + "; quantity=" + saved.getQuantity());
+        return toResponse(saved);
     }
 
     @Override

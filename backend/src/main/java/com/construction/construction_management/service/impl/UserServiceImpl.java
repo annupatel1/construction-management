@@ -7,6 +7,7 @@ import com.construction.construction_management.repository.UserRepository;
 import com.construction.construction_management.security.CurrentUser;
 import com.construction.construction_management.service.UserService;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,8 +24,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll().stream().map(UserResponse::from).toList();
+    public List<UserResponse> getAllUsers(Pageable pageable) {
+        return userRepository.findAll(pageable).map(UserResponse::from).getContent();
     }
 
     @Override

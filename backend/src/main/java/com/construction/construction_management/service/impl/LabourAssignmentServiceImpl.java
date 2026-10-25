@@ -10,9 +10,13 @@ import com.construction.construction_management.exception.ResourceNotFoundExcept
 import com.construction.construction_management.repository.LabourAssignmentRepository;
 import com.construction.construction_management.repository.UserRepository;
 import com.construction.construction_management.security.CurrentUser;
+import com.construction.construction_management.service.AuditService;
 import com.construction.construction_management.service.AccessGuard;
 import com.construction.construction_management.service.LabourAssignmentService;
 import org.springframework.stereotype.Service;
+import com.construction.construction_management.util.Money;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -24,15 +28,18 @@ public class LabourAssignmentServiceImpl implements LabourAssignmentService {
     private final UserRepository userRepository;
     private final CurrentUser currentUser;
     private final AccessGuard guard;
+    private final AuditService auditService;
 
     public LabourAssignmentServiceImpl(LabourAssignmentRepository assignmentRepository,
                                        UserRepository userRepository,
                                        CurrentUser currentUser,
-                                       AccessGuard guard) {
+                                       AccessGuard guard,
+                                       AuditService auditService) {
         this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
         this.currentUser = currentUser;
         this.guard = guard;
+        this.auditService = auditService;
     }
 
     @Override
@@ -51,47 +58,55 @@ public class LabourAssignmentServiceImpl implements LabourAssignmentService {
         LabourAssignment a = new LabourAssignment();
         a.setLabour(labour);
         a.setProject(project);
-        a.setDailyRate(request.getDailyRate());
+        a.setDailyRate(Money.money(request.getDailyRate()));
         a.setStatus(AssignmentStatus.ASSIGNED);
-        a.setAdvanceTaken(request.getAdvanceTaken());
+        a.setAdvanceTaken(Money.money(request.getAdvanceTaken()));
         a.setAssignedDate(request.getAssignedDate() != null ? request.getAssignedDate() : LocalDate.now());
 
-        return LabourAssignmentResponse.from(assignmentRepository.save(a));
+        LabourAssignment saved = assignmentRepository.save(a);
+        auditService.record("LABOUR_ASSIGNED", "LabourAssignment", saved.getId(),
+                "labourId=" + labourId + "; projectId=" + projectId + "; dailyRate=" + saved.getDailyRate());
+        return LabourAssignmentResponse.from(saved);
     }
 
     @Override
     public LabourAssignmentResponse updateAssignment(int assignmentId, LabourAssignmentUpdateRequest request) {
         LabourAssignment a = guard.assignmentForContractor(assignmentId);
-        a.setDailyRate(request.getDailyRate());
-        a.setAdvanceTaken(request.getAdvanceTaken());
-        return LabourAssignmentResponse.from(assignmentRepository.save(a));
+        a.setDailyRate(Money.money(request.getDailyRate()));
+        a.setAdvanceTaken(Money.money(request.getAdvanceTaken()));
+        LabourAssignment saved = assignmentRepository.save(a);
+        auditService.record("ASSIGNMENT_UPDATED", "LabourAssignment", assignmentId,
+                "dailyRate=" + saved.getDailyRate() + "; advanceTaken=" + saved.getAdvanceTaken());
+        return LabourAssignmentResponse.from(saved);
     }
 
     @Override
     public LabourAssignmentResponse updateStatus(int assignmentId, AssignmentStatus status) {
         LabourAssignment a = guard.assignmentForContractor(assignmentId);
         a.setStatus(status);
-        return LabourAssignmentResponse.from(assignmentRepository.save(a));
+        LabourAssignment saved = assignmentRepository.save(a);
+        auditService.record("ASSIGNMENT_STATUS_CHANGED", "LabourAssignment", assignmentId, "status=" + status);
+        return LabourAssignmentResponse.from(saved);
     }
 
     @Override
-    public List<LabourAssignmentResponse> getAssignmentsByProject(int projectId) {
+    public List<LabourAssignmentResponse> getAssignmentsByProject(int projectId, Pageable pageable) {
         guard.projectForOwnerOrContractor(projectId);
-        return assignmentRepository.findByProjectId(projectId).stream()
+        return assignmentRepository.findByProjectId(projectId, pageable)
                 .map(LabourAssignmentResponse::from)
-                .toList();
+                .getContent();
     }
 
     /** Assignments relevant to the logged-in user, depending on their role. */
     @Override
-    public List<LabourAssignmentResponse> getMyAssignments() {
+    public List<LabourAssignmentResponse> getMyAssignments(Pageable pageable) {
         int id = currentUser.id();
-        List<LabourAssignment> list = switch (currentUser.role()) {
-            case LABOUR -> assignmentRepository.findByLabourId(id);
-            case CONTRACTOR -> assignmentRepository.findByProjectContractorId(id);
-            case HOUSE_OWNER -> assignmentRepository.findByProjectHouseOwnerId(id);
-            case ADMIN -> assignmentRepository.findAll();
+        Page<LabourAssignment> page = switch (currentUser.role()) {
+            case LABOUR -> assignmentRepository.findByLabourId(id, pageable);
+            case CONTRACTOR -> assignmentRepository.findByProjectContractorId(id, pageable);
+            case HOUSE_OWNER -> assignmentRepository.findByProjectHouseOwnerId(id, pageable);
+            case ADMIN -> assignmentRepository.findAll(pageable);
         };
-        return list.stream().map(LabourAssignmentResponse::from).toList();
+        return page.map(LabourAssignmentResponse::from).getContent();
     }
 }

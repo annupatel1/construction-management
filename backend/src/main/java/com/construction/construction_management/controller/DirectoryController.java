@@ -10,6 +10,7 @@ import com.construction.construction_management.exception.ResourceNotFoundExcept
 import com.construction.construction_management.repository.RoleRepository;
 import com.construction.construction_management.repository.UserRepository;
 import com.construction.construction_management.security.CurrentUser;
+import com.construction.construction_management.util.Pages;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -39,15 +40,21 @@ public class DirectoryController {
 
     @PreAuthorize("hasAnyRole('HOUSE_OWNER','ADMIN')")
     @GetMapping("/contractors")
-    public List<DirectoryUserResponse> contractors(@RequestParam(required = false) String q) {
-        return search(RoleName.CONTRACTOR, q, false);
+    public List<DirectoryUserResponse> contractors(
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return search(RoleName.CONTRACTOR, q, false, page, size);
     }
 
     /** Registered labourers plus the workers this contractor has added themselves. */
     @PreAuthorize("hasAnyRole('CONTRACTOR','ADMIN')")
     @GetMapping("/labourers")
-    public List<DirectoryUserResponse> labourers(@RequestParam(required = false) String q) {
-        return search(RoleName.LABOUR, q, currentUser.role() == RoleName.CONTRACTOR);
+    public List<DirectoryUserResponse> labourers(
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return search(RoleName.LABOUR, q, currentUser.role() == RoleName.CONTRACTOR, page, size);
     }
 
     /**
@@ -96,7 +103,9 @@ public class DirectoryController {
     }
 
     /** q matches name or address (city / area), case-insensitive. */
-    private List<DirectoryUserResponse> search(RoleName role, String q, boolean includeOwnWorkers) {
+    private List<DirectoryUserResponse> search(RoleName role, String q, boolean includeOwnWorkers,
+                                               int page, int size) {
+        var pageable = Pages.of(page, size);
         Map<Integer, User> found = new LinkedHashMap<>();
         userRepository.findByRoleNameAndPhoneVerifiedTrue(role)
                 .forEach(u -> found.put(u.getId(), u));
@@ -111,6 +120,8 @@ public class DirectoryController {
                         || (u.getName() != null && u.getName().toLowerCase(Locale.ROOT).contains(needle))
                         || (u.getAddress() != null && u.getAddress().toLowerCase(Locale.ROOT).contains(needle)))
                 .sorted(Comparator.comparing(u -> u.getName() == null ? "" : u.getName()))
+                .skip((long) pageable.getPageNumber() * pageable.getPageSize())
+                .limit(pageable.getPageSize())
                 .map(DirectoryUserResponse::from)
                 .toList();
     }

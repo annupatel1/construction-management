@@ -1,5 +1,7 @@
 package com.construction.construction_management.entity;
 
+import java.math.BigDecimal;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -28,7 +30,8 @@ public class ProjectRequirement {
     String area;
     String pincode;
 
-    double areaSqFt;
+    @Column(precision = 12, scale = 2)
+    BigDecimal areaSqFt;
 
     @Enumerated(EnumType.STRING)
     ContractType contractType;

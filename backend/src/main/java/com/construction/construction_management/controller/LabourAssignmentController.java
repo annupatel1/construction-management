@@ -4,6 +4,7 @@ import com.construction.construction_management.dto.LabourAssignmentRequest;
 import com.construction.construction_management.dto.LabourAssignmentResponse;
 import com.construction.construction_management.dto.LabourAssignmentUpdateRequest;
 import com.construction.construction_management.dto.AssignmentStatusRequest;
+import com.construction.construction_management.util.Pages;
 import com.construction.construction_management.service.LabourAssignmentService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -46,13 +47,18 @@ public class LabourAssignmentController {
     }
 
     @GetMapping("/project/{projectId}")
-    public List<LabourAssignmentResponse> getAssignmentsByProject(@PathVariable int projectId) {
-        return labourAssignmentService.getAssignmentsByProject(projectId);
+    public List<LabourAssignmentResponse> getAssignmentsByProject(
+            @PathVariable int projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return labourAssignmentService.getAssignmentsByProject(projectId, Pages.of(page, size));
     }
 
     /** Assignments relevant to the logged-in user. */
     @GetMapping
-    public List<LabourAssignmentResponse> getMyAssignments() {
-        return labourAssignmentService.getMyAssignments();
+    public List<LabourAssignmentResponse> getMyAssignments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return labourAssignmentService.getMyAssignments(Pages.of(page, size));
     }
 }

@@ -1,5 +1,7 @@
 package com.construction.construction_management.entity;
 
+import java.math.BigDecimal;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -27,12 +29,14 @@ public class LabourAssignment {
     @ManyToOne
     Project project;
 
-    double dailyRate;
+    @Column(precision = 12, scale = 2)
+    BigDecimal dailyRate;
 
     @Enumerated(EnumType.STRING)
     AssignmentStatus status;
 
-    double advanceTaken;
+    @Column(precision = 14, scale = 2)
+    BigDecimal advanceTaken;
 
     LocalDate assignedDate;
 
