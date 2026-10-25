@@ -22,6 +22,14 @@ export function formatDate(iso) {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+export function formatDateTime(iso) {
+  if (!iso) return '-'
+  const normalized = String(iso).replace(/(\.\d{3})\d+/, '$1')
+  return new Date(normalized).toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
 /** yyyy-MM-dd in the user's own timezone (what <input type="date"> and the API expect) */
 export const todayISO = () => new Date().toLocaleDateString('en-CA')
 

@@ -113,7 +113,7 @@ export default function Invitations() {
                 </div>
                 {invitation.requestedPermissions && (
                   <p className="mt-2 text-xs font-medium text-ink-500">
-                    {t('Access offered')}: {t('Read-only project access')}
+                    {t('Access offered')}: {t('Project site access')}
                   </p>
                 )}
 

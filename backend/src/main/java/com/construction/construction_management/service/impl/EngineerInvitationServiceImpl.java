@@ -95,10 +95,10 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
         invitation.setStartDate(request.getStartDate());
         invitation.setEndDate(request.getEndDate());
         invitation.setFeeTerms(clean(request.getFeeTerms()));
-        // Gate 2 only defines read-only membership. Reject attempts to grant more.
+        // Gate 2 membership grants project access. Site actions are derived from role + active membership.
         String requested = request.getRequestedPermissions();
         if (requested != null && !requested.isBlank() && !"PROJECT_READ".equals(requested.trim())) {
-            throw new BadRequestException("Only read-only project access can be granted");
+            throw new BadRequestException("Only project access can be granted");
         }
         invitation.setRequestedPermissions("PROJECT_READ");
         invitation.setResponseDeadline(request.getResponseDeadline());

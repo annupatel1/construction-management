@@ -132,7 +132,7 @@ public class ProjectServiceImpl implements ProjectService {
         return response(guard.projectForParticipant(id));
     }
 
-    /** Engineers get read-only site access; commercial terms stay off their payload. */
+    /** Engineers get scoped site access; commercial terms stay off their payload. */
     private ProjectResponse response(Project project) {
         ProjectResponse response = ProjectResponse.from(project);
         if (currentUser.role() == RoleName.ENGINEER) {

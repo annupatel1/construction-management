@@ -190,7 +190,7 @@ class EngineerMarketplaceIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
 
-        // Accepted membership is site-read-only: financial and wage endpoints stay closed.
+        // Accepted membership opens site records, but financial and wage endpoints stay closed.
         mockMvc.perform(get("/api/payments/project/" + project.getId())
                         .header("Authorization", token(engineer)))
                 .andExpect(status().isForbidden());

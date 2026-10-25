@@ -29,7 +29,7 @@ export default function ProjectCard({ project }) {
         </div>
         <div className="mt-3 flex items-end justify-between border-t border-ink-100 pt-3">
           {isEngineer
-            ? <p className="text-xs text-ink-500">{t('Read-only engineer access')}</p>
+            ? <p className="text-xs text-ink-500">{t('Engineer site access')}</p>
             : (
               <div>
                 <p className="text-xs text-ink-500">{t('Estimated cost')}</p>

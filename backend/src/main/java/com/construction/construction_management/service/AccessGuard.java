@@ -58,6 +58,33 @@ public class AccessGuard {
         throw new AccessDeniedException("No access to this project");
     }
 
+    /** Owner, contractor, admin, or an accepted engineer member (site records). */
+    public Project projectForSiteRead(int projectId) {
+        Project p = load(projectId);
+        int userId = currentUser.id();
+        if (currentUser.isAdmin() || isOwner(p) || isContractor(p)
+                || membershipRepository.existsByProjectIdAndUserIdAndActiveTrue(projectId, userId)) {
+            return p;
+        }
+        throw new AccessDeniedException("No access to this project's site records");
+    }
+
+    /** Contractor or admin (create/edit tasks, milestones and reports on behalf of the site). */
+    public Project projectForSiteManagement(int projectId) {
+        Project p = load(projectId);
+        if (currentUser.isAdmin() || isContractor(p)) {
+            return p;
+        }
+        throw new AccessDeniedException("Only the project contractor or an admin can manage this");
+    }
+
+    /** A valid assignee is the owner, contractor, or an active engineer member. */
+    public boolean isAssignable(Project project, int userId) {
+        return (project.getHouseOwner() != null && project.getHouseOwner().getId() == userId)
+                || (project.getContractor() != null && project.getContractor().getId() == userId)
+                || membershipRepository.existsByProjectIdAndUserIdAndActiveTrue(project.getId(), userId);
+    }
+
     /** Owner, contractor or admin (money and material details). */
     public Project projectForOwnerOrContractor(int projectId) {
         Project p = load(projectId);

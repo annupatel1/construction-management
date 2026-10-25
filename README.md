@@ -14,7 +14,7 @@ This repository contains both applications:
 - House owners post requirements, hire contractors, start projects, and track payments.
 - Contractors manage projects, assign labour, mark attendance, log material expenses, and pay wages.
 - Labourers see assigned sites, attendance, and wage balances.
-- Engineers publish a professional profile, get discovered by owners/contractors, and join projects through invitations.
+- Engineers publish a professional profile, get discovered by owners/contractors, and join projects through invitations with scoped site access.
 - Two contract types: **Labour Only** and **Labour + Material**.
 - JWT authentication, OTP verification, and role-based access control.
 
@@ -52,7 +52,8 @@ The backend schema is owned by Flyway (`spring.jpa.hibernate.ddl-auto=none`):
 - A fresh database runs `backend/src/main/resources/db/migration/common/V1__baseline.sql` plus the
   vendor migrations for MySQL or H2.
 - A database created by the older `ddl-auto=update` setup is baselined at `V1`, then upgraded by the
-  MySQL migrations (`V2` gate-0 hardening, `V3` audit events, `V4` engineer marketplace).
+  MySQL migrations (`V2` gate-0 hardening, `V3` audit events, `V4` engineer marketplace,
+  `V5` site execution).
 - Automated tests run the same migrations against in-memory H2 in MySQL mode. No Docker or MySQL is
   required for `mvn test`.
 
@@ -77,8 +78,20 @@ Gate 2 engineer marketplace is in place:
 - Searchable engineer directory with public contact details kept private.
 - Owner/contractor invitations with scope, dates, fee terms, and a response deadline.
 - Accept/decline/cancel workflow; only acceptance creates a project membership.
-- Accepted engineers get read-only project access; finance, wage, and team-management endpoints stay closed.
+- Accepted engineers get scoped project access; finance, wage, and team-management endpoints stay closed.
 - Invitation and membership changes are audited.
+
+Gate 3 site execution is in place:
+
+- Daily progress reports with planned/completed work, blockers, next-day plan, dated photo links, and a
+  draft → submitted → published workflow. Owners see published reports only.
+- Tasks with assignees, due dates, milestones, delay reasons, and overdue tracking.
+- Milestones with target/completed dates and task completion progress.
+- Quality/safety/delay issues with photo evidence, assignee, due date, comments, and resolution evidence.
+- Site records are scoped to the owner, contractor, admin, and accepted engineer members. Labour cannot
+  read site execution records, and financial data stays hidden from engineers.
+- Progress report lists are paginated; task, milestone, and issue lists are bounded and support
+  `page`/`size`.
 
 ## Tests and CI
 

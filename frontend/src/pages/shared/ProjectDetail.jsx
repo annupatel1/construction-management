@@ -13,6 +13,7 @@ import CallButton from '../../components/Contact'
 import StatusBadge from '../../components/Status'
 import { Alert, Button, Card, ErrorState, PageLoader, Progress, Row, StatCard, Tabs } from '../../components/ui'
 import { ExpensesTab, LabourTab, PaymentsTab } from './ProjectTabs'
+import { IssuesTab, MilestonesTab, ProgressTab, SiteSnapshot, TasksTab } from './ProjectSiteTabs'
 
 const get = (url) => api.get(url).then((r) => r.data)
 
@@ -22,6 +23,7 @@ export default function ProjectDetail() {
   const { t } = useT()
   const toast = useToast()
   const role = user.roleName
+  const canViewSite = role === 'HOUSE_OWNER' || role === 'CONTRACTOR' || role === 'ENGINEER' || role === 'ADMIN'
   const canViewFinance = role === 'HOUSE_OWNER' || role === 'CONTRACTOR' || role === 'ADMIN'
   const canViewEngineers = canViewFinance
   const canInviteEngineers = role === 'HOUSE_OWNER' || role === 'CONTRACTOR'
@@ -30,7 +32,19 @@ export default function ProjectDetail() {
 
   const { data, loading, error, reload } = useFetch(async () => {
     const project = await get(`/api/projects/${id}`)
-    if (!canViewFinance) return { project }
+    if (!canViewSite) return { project }
+
+    const [progressReports, tasks, milestones, issues] = await Promise.all([
+      get(`/api/projects/${id}/progress-reports`),
+      get(`/api/projects/${id}/tasks`),
+      get(`/api/projects/${id}/milestones`),
+      get(`/api/projects/${id}/issues`),
+    ])
+
+    if (!canViewFinance) {
+      return { project, progressReports, tasks, milestones, issues }
+    }
+
     const [payments, expenses, assignments, engineers] = await Promise.all([
       get(`/api/payments/project/${id}`),
       get(`/api/expenses/project/${id}`),
@@ -45,16 +59,21 @@ export default function ProjectDetail() {
         return wageSummary(a, att, lp)
       }))
     }
-    return { project, payments, expenses, assignments, wages, engineers }
-  }, [id, role, canViewFinance, canViewEngineers])
+    return { project, progressReports, tasks, milestones, issues, payments, expenses, assignments, wages, engineers }
+  }, [id, role, canViewSite, canViewFinance, canViewEngineers])
 
   if (loading) return <PageLoader />
   if (error) return <ErrorState message={error} onRetry={reload} />
 
-  const { project, payments = [], expenses = [], assignments = [], wages = [], engineers = [] } = data
+  const {
+    project, progressReports = [], tasks = [], milestones = [], issues = [],
+    payments = [], expenses = [], assignments = [], wages = [], engineers = [],
+  } = data
   const fin = projectFinance(project, payments, expenses, wages)
   const canManageStatus = role === 'HOUSE_OWNER' || role === 'CONTRACTOR'
   const isContractor = role === 'CONTRACTOR'
+  const openTasks = tasks.filter((task) => task.status !== 'DONE').length
+  const openIssues = issues.filter((issue) => issue.status !== 'RESOLVED').length
 
   const changeStatus = async (status) => {
     try {
@@ -65,6 +84,14 @@ export default function ProjectDetail() {
   }
 
   const tabs = [{ id: 'overview', label: t('Overview') }]
+  if (canViewSite) {
+    tabs.push(
+      { id: 'progress', label: `${t('Progress')} (${progressReports.length})` },
+      { id: 'tasks', label: `${t('Tasks')} (${openTasks})` },
+      { id: 'milestones', label: `${t('Milestones')} (${milestones.length})` },
+      { id: 'issues', label: `${t('Issues')} (${openIssues})` },
+    )
+  }
   if (canViewFinance) {
     tabs.push(
       { id: 'labour', label: `${t('Labour')} (${assignments.length})` },
@@ -110,6 +137,10 @@ export default function ProjectDetail() {
 
       {tab === 'overview' && (
         <div className="space-y-5">
+          {canViewSite && (
+            <SiteSnapshot reports={progressReports} tasks={tasks} milestones={milestones} issues={issues} />
+          )}
+
           {canViewFinance && (
             <>
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -193,11 +224,23 @@ export default function ProjectDetail() {
           )}
 
           {isEngineer && (
-            <Alert tone="info">{t('Your engineer membership is read-only. Financial details are hidden.')}</Alert>
+            <Alert tone="info">{t('Financial details are hidden. You can write progress reports, update tasks assigned to you, and raise or comment on site issues.')}</Alert>
           )}
         </div>
       )}
 
+      {tab === 'progress' && canViewSite && (
+        <ProgressTab project={project} reports={progressReports} role={role} onChange={reload} />
+      )}
+      {tab === 'tasks' && canViewSite && (
+        <TasksTab project={project} tasks={tasks} milestones={milestones} engineers={engineers} role={role} onChange={reload} />
+      )}
+      {tab === 'milestones' && canViewSite && (
+        <MilestonesTab project={project} milestones={milestones} role={role} onChange={reload} />
+      )}
+      {tab === 'issues' && canViewSite && (
+        <IssuesTab project={project} issues={issues} engineers={engineers} role={role} onChange={reload} />
+      )}
       {tab === 'labour' && canViewFinance && <LabourTab project={project} assignments={assignments} role={role} onChange={reload} />}
       {tab === 'expenses' && canViewFinance && <ExpensesTab project={project} expenses={expenses} role={role} onChange={reload} />}
       {tab === 'payments' && canViewFinance && <PaymentsTab project={project} payments={payments} fin={fin} role={role} onChange={reload} />}

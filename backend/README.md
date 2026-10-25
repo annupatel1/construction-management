@@ -9,8 +9,8 @@ owned by Flyway migrations.
 - **House Owners** post requirements, hire contractors, and track payments.
 - **Contractors** run sites, assign labour, mark attendance, log material expenses, and pay wages.
 - **Labourers** see assigned sites, attendance, and wage balances.
-- **Engineers** publish a professional profile, receive project invitations, and get read-only access after
-  accepting.
+- **Engineers** publish a professional profile, receive project invitations, and get scoped site access after
+  accepting (progress reports, assigned tasks and issues); financial details stay private.
 - Two contract types: **Labour Only** (owner supplies material) and **Labour + Material**
   (contractor supplies material).
 
@@ -42,7 +42,7 @@ In development, OTP codes are printed in the server log (`OTP_*_DELIVERY=CONSOLE
 
 Migrations live in `src/main/resources/db/migration`:
 
-- `common/` — shared baseline, audit table, and engineer marketplace tables
+- `common/` — shared baseline, audit table, engineer marketplace, and site execution tables
 - `mysql/` — production upgrades
 - `h2/` — the same upgrades, written for the H2 test database
 
@@ -54,7 +54,7 @@ spring.flyway.baseline-version=1
 
 A fresh database runs `V1` and then the vendor migrations. An existing database created by the old
 `ddl-auto=update` setup is baselined at `V1` and then receives the vendor migrations. The current
-schema is at `V4` (engineer marketplace). Never edit a migration that has already run in an environment;
+schema is at `V5` (site execution). Never edit a migration that has already run in an environment;
 add a new one instead.
 
 ## Tests
@@ -97,7 +97,8 @@ Start with `SPRING_PROFILES_ACTIVE=prod` and provide the environment variables r
 - Public requirement, project, and directory payloads use `DirectoryUserResponse` (no email or login
   data). Aadhaar fields were removed.
 - Financial and status changes are written to the admin-only audit table (`/api/admin/audit`).
-- List endpoints are bounded (default 50, maximum 100 per page).
+- List endpoints are bounded (default 50, maximum 100 per page). Site execution list endpoints
+  accept `page`/`size`; tasks, milestones, and issues default to 100.
 
 ## Engineer marketplace
 
@@ -109,5 +110,20 @@ Start with `SPRING_PROFILES_ACTIVE=prod` and provide the environment variables r
 - Invitations carry scope, dates, optional fee terms, requested permissions, and an optional deadline.
 - Pending invitations grant no project access. Acceptance creates `project_membership` transactionally and
   is audited. Declines, cancellations, and removals are audited too.
-- Engineers get read-only access to accepted projects. Finance, wage, attendance-management, and
+- Accepted engineers get scoped project access. They can write progress reports, update tasks assigned
+  to them, and raise or comment on site issues; finance, wage, attendance-management, and
   team-management endpoints remain owner/contractor/admin only.
+
+## Site execution
+
+- `progress_report` + `progress_photo`: daily planned/completed work, blockers, next-day plan, dated
+  photo links, and DRAFT/SUBMITTED/PUBLISHED status. Owners only see published reports. Published
+  reports are immutable; edit a draft/submitted report to send it back to draft before resubmitting.
+- `milestone`: target date, status, completed date, and task completion counters.
+- `project_task`: assignee, due date, status, delay reason, and completed timestamp. Contractors/admins
+  manage tasks; an assignee can update status.
+- `project_issue` + `issue_photo` + `issue_comment`: quality/safety/delay issues, photo evidence,
+  comments, and resolution evidence.
+- All site routes require the owner, contractor, admin, or an active engineer membership. Labour is
+  denied even when assigned to the project. Every create/update/status change is written to the audit
+  trail.

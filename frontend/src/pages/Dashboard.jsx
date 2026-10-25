@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import {
-  Building2, CalendarCheck, ClipboardList, HardHat, IndianRupee, PencilRuler, PlusCircle, Search, UserPlus, Users, Wallet,
+  AlertTriangle, Building2, CalendarCheck, ClipboardList, HardHat, IndianRupee, PencilRuler, PlusCircle, Search, UserPlus, Users, Wallet,
 } from 'lucide-react'
 import api from '../lib/api'
 import useFetch from '../hooks/useFetch'
 import { useAuth } from '../context/AuthContext'
 import { useT } from '../i18n/LanguageContext'
-import { formatINR, formatINRShort } from '../lib/format'
+import { formatDate, formatINR, formatINRShort } from '../lib/format'
 import { sum, wageSummary } from '../lib/calc'
 import { LABELS } from '../lib/labels'
 import ProjectCard from '../components/ProjectCard'
@@ -200,26 +200,41 @@ export function AssignmentCard({ a }) {
 /* ---------------- Engineer ---------------- */
 function EngineerHome() {
   const { t } = useT()
+  const { user } = useAuth()
   const { data, loading, error, reload } = useFetch(async () => {
     const [projects, invitations, profile] = await Promise.all([
       get('/api/projects'),
       get('/api/engineer-invitations/inbox'),
       get('/api/engineers/me').catch(() => null),
     ])
-    return { projects, invitations, profile }
+    const sites = await Promise.all(projects.map(async (project) => {
+      const [tasks, issues] = await Promise.all([
+        get(`/api/projects/${project.id}/tasks`),
+        get(`/api/projects/${project.id}/issues`),
+      ])
+      return { project, tasks, issues }
+    }))
+    return { projects, invitations, profile, sites }
   })
   if (loading) return <PageLoader />
   if (error) return <ErrorState message={error} onRetry={reload} />
 
-  const { projects, invitations, profile } = data
+  const { projects, invitations, profile, sites } = data
   const pending = invitations.filter((i) => i.status === 'PENDING')
   const profileState = !profile ? t('Not created') : profile.profileComplete ? t('Complete') : t('Incomplete')
+  const myTasks = sites.flatMap((site) => site.tasks
+    .filter((task) => task.assignee?.id === user.id && task.status !== 'DONE')
+    .map((task) => ({ ...task, project: site.project })))
+  const myIssues = sites.flatMap((site) => site.issues
+    .filter((issue) => issue.assignee?.id === user.id && issue.status !== 'RESOLVED')
+    .map((issue) => ({ ...issue, project: site.project })))
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t('Active projects')} value={projects.filter((p) => p.status === 'ONGOING').length} icon={Building2} />
         <StatCard label={t('Pending invitations')} value={pending.length} icon={UserPlus} tone={pending.length > 0 ? 'amber' : 'green'} />
+        <StatCard label={t('My open tasks')} value={myTasks.length} icon={ClipboardList} tone={myTasks.length > 0 ? 'amber' : 'green'} />
         <StatCard label={t('Profile')} value={profileState} icon={PencilRuler} tone={profile?.profileComplete ? 'green' : 'red'} />
       </div>
 
@@ -228,6 +243,44 @@ function EngineerHome() {
         <QuickLink to="/invitations" icon={UserPlus} label={t('Invitations')} />
         <QuickLink to="/projects" icon={Building2} label={t('Projects')} />
       </div>
+
+      <section>
+        <SectionTitle>{t('Assigned to you')}</SectionTitle>
+        {myTasks.length === 0 && myIssues.length === 0 ? (
+          <EmptyState icon={ClipboardList} title={t('Nothing assigned right now')}
+            text={t('Tasks and issues assigned to you on your projects will appear here.')} />
+        ) : (
+          <Card className="divide-y divide-ink-100">
+            {myTasks.map((task) => (
+              <Link key={`task-${task.id}`} to={`/projects/${task.project.id}`}
+                className="flex items-center justify-between gap-3 p-3.5 hover:bg-ink-50">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-ink-900">{task.title}</p>
+                  <p className="truncate text-xs text-ink-500">
+                    {task.project.title}{task.dueDate ? ` · ${t('Due')} ${formatDate(task.dueDate)}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {task.overdue && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                  <StatusBadge group="taskStatus" value={task.status} />
+                </div>
+              </Link>
+            ))}
+            {myIssues.map((issue) => (
+              <Link key={`issue-${issue.id}`} to={`/projects/${issue.project.id}`}
+                className="flex items-center justify-between gap-3 p-3.5 hover:bg-ink-50">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-ink-900">{issue.title}</p>
+                  <p className="truncate text-xs text-ink-500">{issue.project.title} · {t('Issue')}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusBadge group="issueStatus" value={issue.status} />
+                </div>
+              </Link>
+            ))}
+          </Card>
+        )}
+      </section>
 
       <section>
         <SectionTitle action={<Link to="/invitations" className="text-sm font-medium text-brand-700">{t('View all')}</Link>}>

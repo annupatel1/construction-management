@@ -91,7 +91,7 @@ export default function InviteEngineer() {
           <Card className="p-4">
             <h2 className="mb-2 flex items-center gap-2 font-semibold text-ink-900"><ShieldCheck className="h-4 w-4" /> {t('Access is granted on acceptance')}</h2>
             <p className="text-sm leading-6 text-ink-600">
-              {t('The engineer will not see this project until they accept. On acceptance they get read-only project access; financial details stay hidden.')}
+              {t('The engineer will not see this project until they accept. On acceptance they get scoped site access for progress, tasks, milestones and issues; financial details stay hidden.')}
             </p>
           </Card>
           <Card className="p-4">
