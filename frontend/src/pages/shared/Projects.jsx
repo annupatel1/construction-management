@@ -12,6 +12,7 @@ export default function Projects() {
   const { t } = useT()
   const { data, loading, error, reload } = useFetch(() => api.get('/api/projects').then((r) => r.data))
   const isOwner = user.roleName === 'HOUSE_OWNER'
+  const isEngineer = user.roleName === 'ENGINEER'
   const canCreate = isOwner || user.roleName === 'CONTRACTOR'
 
   return (
@@ -25,10 +26,16 @@ export default function Projects() {
       />
       {loading ? <PageLoader /> : error ? <ErrorState message={error} onRetry={reload} /> : data.length === 0 ? (
         <EmptyState icon={Building2} title={t('No projects yet')}
-          text={isOwner ? t('Find a contractor and start your first project.') : t('Projects will appear here once an owner starts one with you.')}
+          text={isOwner
+            ? t('Find a contractor and start your first project.')
+            : isEngineer
+              ? t('Accept an engineer invitation to get project access.')
+              : t('Projects will appear here once an owner starts one with you.')}
           action={isOwner
             ? <Link to="/contractors"><Button>{t('Find a contractor')}</Button></Link>
-            : <Link to="/projects/new"><Button><Plus className="h-4 w-4" /> {t('New site')}</Button></Link>} />
+            : isEngineer
+              ? <Link to="/invitations"><Button>{t('View invitations')}</Button></Link>
+              : <Link to="/projects/new"><Button><Plus className="h-4 w-4" /> {t('New site')}</Button></Link>} />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{data.map((p) => <ProjectCard key={p.id} project={p} />)}</div>
       )}

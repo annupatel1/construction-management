@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import {
-  Building2, CalendarCheck, ClipboardList, HardHat, IndianRupee, PlusCircle, Search, Users, Wallet,
+  Building2, CalendarCheck, ClipboardList, HardHat, IndianRupee, PencilRuler, PlusCircle, Search, UserPlus, Users, Wallet,
 } from 'lucide-react'
 import api from '../lib/api'
 import useFetch from '../hooks/useFetch'
@@ -26,6 +26,7 @@ export default function Dashboard() {
       {user.roleName === 'HOUSE_OWNER' && <OwnerHome />}
       {user.roleName === 'CONTRACTOR' && <ContractorHome />}
       {user.roleName === 'LABOUR' && <LabourHome />}
+      {user.roleName === 'ENGINEER' && <EngineerHome />}
       {user.roleName === 'ADMIN' && <AdminHome />}
     </>
   )
@@ -61,9 +62,10 @@ function OwnerHome() {
         <StatCard label={t('Total project value')} value={formatINRShort(sum(projects, (p) => p.totalEstimatedCost))} icon={IndianRupee} tone="green" />
         <StatCard label={t('Open requirements')} value={requirements.filter((r) => r.status === 'OPEN').length} icon={ClipboardList} tone="amber" />
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <QuickLink to="/requirements/new" icon={PlusCircle} label={t('Post a requirement')} />
         <QuickLink to="/contractors" icon={Search} label={t('Find a contractor')} />
+        <QuickLink to="/engineers" icon={PencilRuler} label={t('Find an engineer')} />
         <QuickLink to="/projects/new" icon={Building2} label={t('Start a project')} />
       </div>
       <section>
@@ -105,9 +107,11 @@ function ContractorHome() {
         <StatCard label={t('Open requirements')} value={requirements.length} icon={ClipboardList} tone="green" />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <QuickLink to="/my-labour" icon={Users} label={t('My labour')} />
         <QuickLink to="/projects/new" icon={PlusCircle} label={t('New site')} />
+        <QuickLink to="/engineers" icon={PencilRuler} label={t('Find an engineer')} />
+        <QuickLink to="/invitations" icon={UserPlus} label={t('Invitations')} />
       </div>
 
       <section>
@@ -193,6 +197,69 @@ export function AssignmentCard({ a }) {
   )
 }
 
+/* ---------------- Engineer ---------------- */
+function EngineerHome() {
+  const { t } = useT()
+  const { data, loading, error, reload } = useFetch(async () => {
+    const [projects, invitations, profile] = await Promise.all([
+      get('/api/projects'),
+      get('/api/engineer-invitations/inbox'),
+      get('/api/engineers/me').catch(() => null),
+    ])
+    return { projects, invitations, profile }
+  })
+  if (loading) return <PageLoader />
+  if (error) return <ErrorState message={error} onRetry={reload} />
+
+  const { projects, invitations, profile } = data
+  const pending = invitations.filter((i) => i.status === 'PENDING')
+  const profileState = !profile ? t('Not created') : profile.profileComplete ? t('Complete') : t('Incomplete')
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatCard label={t('Active projects')} value={projects.filter((p) => p.status === 'ONGOING').length} icon={Building2} />
+        <StatCard label={t('Pending invitations')} value={pending.length} icon={UserPlus} tone={pending.length > 0 ? 'amber' : 'green'} />
+        <StatCard label={t('Profile')} value={profileState} icon={PencilRuler} tone={profile?.profileComplete ? 'green' : 'red'} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <QuickLink to="/engineer-profile" icon={PencilRuler} label={t('Engineer profile')} />
+        <QuickLink to="/invitations" icon={UserPlus} label={t('Invitations')} />
+        <QuickLink to="/projects" icon={Building2} label={t('Projects')} />
+      </div>
+
+      <section>
+        <SectionTitle action={<Link to="/invitations" className="text-sm font-medium text-brand-700">{t('View all')}</Link>}>
+          {t('Invitations waiting for you')}
+        </SectionTitle>
+        {pending.length === 0
+          ? <EmptyState icon={UserPlus} title={t('No pending invitations')} text={t('Owners and contractors can invite you from your public profile.')} />
+          : (
+            <Card className="divide-y divide-ink-100">
+              {pending.slice(0, 4).map((invitation) => (
+                <Link key={invitation.id} to="/invitations" className="flex items-center justify-between gap-3 p-3.5 hover:bg-ink-50">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink-900">{invitation.projectTitle}</p>
+                    <p className="truncate text-xs text-ink-500">{invitation.inviter.name} · {invitation.scope}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-medium text-brand-700">{t('Review')} →</span>
+                </Link>
+              ))}
+            </Card>
+          )}
+      </section>
+
+      <section>
+        <SectionTitle action={<Link to="/projects" className="text-sm font-medium text-brand-700">{t('View all')}</Link>}>{t('Your projects')}</SectionTitle>
+        {projects.length === 0
+          ? <EmptyState icon={Building2} title={t('No projects yet')} text={t('Accept an invitation to get project access.')} />
+          : <div className="grid gap-3 md:grid-cols-2">{projects.slice(0, 4).map((p) => <ProjectCard key={p.id} project={p} />)}</div>}
+      </section>
+    </div>
+  )
+}
+
 /* ---------------- Admin ---------------- */
 function AdminHome() {
   const { t } = useT()
@@ -201,11 +268,12 @@ function AdminHome() {
   if (error) return <ErrorState message={error} onRetry={reload} />
   const count = (r) => data.filter((u) => u.roleName === r).length
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       <StatCard label={t('Total users')} value={data.length} icon={Users} tone="ink" />
       <StatCard label={t('House owners')} value={count('HOUSE_OWNER')} icon={Building2} />
       <StatCard label={t('Contractors')} value={count('CONTRACTOR')} icon={HardHat} tone="amber" />
       <StatCard label={t('Labour')} value={count('LABOUR')} icon={Users} tone="green" />
+      <StatCard label={t('Engineers')} value={count('ENGINEER')} icon={PencilRuler} tone="brand" />
     </div>
   )
 }

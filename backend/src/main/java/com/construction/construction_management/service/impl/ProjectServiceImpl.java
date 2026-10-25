@@ -6,6 +6,7 @@ import com.construction.construction_management.entity.*;
 import com.construction.construction_management.exception.BadRequestException;
 import com.construction.construction_management.exception.ResourceNotFoundException;
 import com.construction.construction_management.repository.LabourAssignmentRepository;
+import com.construction.construction_management.repository.ProjectMembershipRepository;
 import com.construction.construction_management.repository.ProjectRepository;
 import com.construction.construction_management.repository.UserRepository;
 import com.construction.construction_management.security.CurrentUser;
@@ -26,6 +27,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final LabourAssignmentRepository assignmentRepository;
+    private final ProjectMembershipRepository membershipRepository;
     private final CurrentUser currentUser;
     private final AccessGuard guard;
     private final AuditService auditService;
@@ -33,12 +35,14 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectServiceImpl(ProjectRepository projectRepository,
                               UserRepository userRepository,
                               LabourAssignmentRepository assignmentRepository,
+                              ProjectMembershipRepository membershipRepository,
                               CurrentUser currentUser,
                               AccessGuard guard,
                               AuditService auditService) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.assignmentRepository = assignmentRepository;
+        this.membershipRepository = membershipRepository;
         this.currentUser = currentUser;
         this.guard = guard;
         this.auditService = auditService;
@@ -117,14 +121,25 @@ public class ProjectServiceImpl implements ProjectService {
             case HOUSE_OWNER -> projectRepository.findByHouseOwnerId(id, pageable);
             case CONTRACTOR -> projectRepository.findByContractorId(id, pageable);
             case LABOUR -> assignmentRepository.findDistinctProjectsByLabourId(id, pageable);
+            case ENGINEER -> membershipRepository.findDistinctProjectsByUserId(id, pageable);
             case ADMIN -> projectRepository.findAll(pageable);
         };
-        return projects.map(ProjectResponse::from).getContent();
+        return projects.map(this::response).getContent();
     }
 
     @Override
     public ProjectResponse getProjectById(int id) {
-        return ProjectResponse.from(guard.projectForParticipant(id));
+        return response(guard.projectForParticipant(id));
+    }
+
+    /** Engineers get read-only site access; commercial terms stay off their payload. */
+    private ProjectResponse response(Project project) {
+        ProjectResponse response = ProjectResponse.from(project);
+        if (currentUser.role() == RoleName.ENGINEER) {
+            response.setRatePerSqFt(null);
+            response.setTotalEstimatedCost(null);
+        }
+        return response;
     }
 
     @Override

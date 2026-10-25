@@ -1,6 +1,6 @@
 # BuildTrack — Construction Site Management
 
-A full-stack construction marketplace connecting **House Owners**, **Contractors**, and **Labourers**.
+A full-stack construction marketplace connecting **House Owners**, **Contractors**, **Labourers**, and **Engineers**.
 
 This repository contains both applications:
 
@@ -14,6 +14,7 @@ This repository contains both applications:
 - House owners post requirements, hire contractors, start projects, and track payments.
 - Contractors manage projects, assign labour, mark attendance, log material expenses, and pay wages.
 - Labourers see assigned sites, attendance, and wage balances.
+- Engineers publish a professional profile, get discovered by owners/contractors, and join projects through invitations.
 - Two contract types: **Labour Only** and **Labour + Material**.
 - JWT authentication, OTP verification, and role-based access control.
 
@@ -51,7 +52,7 @@ The backend schema is owned by Flyway (`spring.jpa.hibernate.ddl-auto=none`):
 - A fresh database runs `backend/src/main/resources/db/migration/common/V1__baseline.sql` plus the
   vendor migrations for MySQL or H2.
 - A database created by the older `ddl-auto=update` setup is baselined at `V1`, then upgraded by the
-  MySQL migrations (`V2` gate-0 hardening, `V3` audit events).
+  MySQL migrations (`V2` gate-0 hardening, `V3` audit events, `V4` engineer marketplace).
 - Automated tests run the same migrations against in-memory H2 in MySQL mode. No Docker or MySQL is
   required for `mvn test`.
 
@@ -68,6 +69,16 @@ Gate 0 hardening is in place:
 - Admin-only audit trail for financial and status changes.
 - Bounded list endpoints (default 50, maximum 100 per page).
 - Production profile fails fast on weak secrets or console OTP delivery.
+
+Gate 2 engineer marketplace is in place:
+
+- Engineer profiles with skills, specialty, experience, service area, languages, availability, portfolio,
+  and credential-review state.
+- Searchable engineer directory with public contact details kept private.
+- Owner/contractor invitations with scope, dates, fee terms, and a response deadline.
+- Accept/decline/cancel workflow; only acceptance creates a project membership.
+- Accepted engineers get read-only project access; finance, wage, and team-management endpoints stay closed.
+- Invitation and membership changes are audited.
 
 ## Tests and CI
 

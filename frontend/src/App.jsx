@@ -19,6 +19,11 @@ import NewRequirement from './pages/owner/NewRequirement'
 import Work from './pages/labour/Work'
 import MyLabour from './pages/contractor/MyLabour'
 import AdminUsers from './pages/admin/AdminUsers'
+import EngineerDirectory from './pages/engineer/EngineerDirectory'
+import EngineerPublicProfile from './pages/engineer/EngineerPublicProfile'
+import EngineerProfile from './pages/engineer/EngineerProfile'
+import Invitations from './pages/engineer/Invitations'
+import InviteEngineer from './pages/owner/InviteEngineer'
 
 export default function App() {
   return (
@@ -37,9 +42,23 @@ export default function App() {
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:id" element={<ProjectDetail />} />
           <Route path="/assignments/:id" element={<AssignmentDetail />} />
+          <Route path="/engineers/:id" element={<EngineerPublicProfile />} />
 
           <Route element={<RequireRole roles={['HOUSE_OWNER', 'CONTRACTOR']} />}>
             <Route path="/projects/new" element={<NewProject />} />
+            <Route path="/projects/:id/invite-engineer" element={<InviteEngineer />} />
+          </Route>
+
+          <Route element={<RequireRole roles={['HOUSE_OWNER', 'CONTRACTOR', 'ENGINEER']} />}>
+            <Route path="/invitations" element={<Invitations />} />
+          </Route>
+
+          <Route element={<RequireRole roles={['HOUSE_OWNER', 'CONTRACTOR', 'ADMIN']} />}>
+            <Route path="/engineers" element={<EngineerDirectory />} />
+          </Route>
+
+          <Route element={<RequireRole roles={['ENGINEER']} />}>
+            <Route path="/engineer-profile" element={<EngineerProfile />} />
           </Route>
 
           <Route element={<RequireRole roles={['HOUSE_OWNER']} />}>

@@ -1,7 +1,7 @@
 # BuildTrack Backend
 
-Spring Boot REST API for a construction marketplace connecting House Owners, Contractors, and
-Labourers. Role-based access control, JWT authentication, OTP verification, and a MySQL schema
+Spring Boot REST API for a construction marketplace connecting House Owners, Contractors, Labourers,
+and Engineers. Role-based access control, JWT authentication, OTP verification, and a MySQL schema
 owned by Flyway migrations.
 
 ## Overview
@@ -9,6 +9,8 @@ owned by Flyway migrations.
 - **House Owners** post requirements, hire contractors, and track payments.
 - **Contractors** run sites, assign labour, mark attendance, log material expenses, and pay wages.
 - **Labourers** see assigned sites, attendance, and wage balances.
+- **Engineers** publish a professional profile, receive project invitations, and get read-only access after
+  accepting.
 - Two contract types: **Labour Only** (owner supplies material) and **Labour + Material**
   (contractor supplies material).
 
@@ -40,7 +42,7 @@ In development, OTP codes are printed in the server log (`OTP_*_DELIVERY=CONSOLE
 
 Migrations live in `src/main/resources/db/migration`:
 
-- `common/` — shared baseline and audit table
+- `common/` — shared baseline, audit table, and engineer marketplace tables
 - `mysql/` — production upgrades
 - `h2/` — the same upgrades, written for the H2 test database
 
@@ -51,8 +53,9 @@ spring.flyway.baseline-version=1
 ```
 
 A fresh database runs `V1` and then the vendor migrations. An existing database created by the old
-`ddl-auto=update` setup is baselined at `V1` and then receives the vendor migrations. Never edit a
-migration that has already run in an environment; add a new one instead.
+`ddl-auto=update` setup is baselined at `V1` and then receives the vendor migrations. The current
+schema is at `V4` (engineer marketplace). Never edit a migration that has already run in an environment;
+add a new one instead.
 
 ## Tests
 
@@ -95,3 +98,16 @@ Start with `SPRING_PROFILES_ACTIVE=prod` and provide the environment variables r
   data). Aadhaar fields were removed.
 - Financial and status changes are written to the admin-only audit table (`/api/admin/audit`).
 - List endpoints are bounded (default 50, maximum 100 per page).
+
+## Engineer marketplace
+
+- `ENGINEER` role and `engineer_profile` (skills, specialty, experience, area, languages, availability,
+  portfolio, credential state).
+- Directory search by text, city, specialty, minimum experience, and availability.
+- Public engineer responses never contain phone or email; accepted project membership unlocks contact
+  details for the project team.
+- Invitations carry scope, dates, optional fee terms, requested permissions, and an optional deadline.
+- Pending invitations grant no project access. Acceptance creates `project_membership` transactionally and
+  is audited. Declines, cancellations, and removals are audited too.
+- Engineers get read-only access to accepted projects. Finance, wage, attendance-management, and
+  team-management endpoints remain owner/contractor/admin only.

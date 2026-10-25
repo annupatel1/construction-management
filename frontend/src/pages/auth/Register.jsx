@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { HardHat, Home, Hammer } from 'lucide-react'
+import { HardHat, Home, Hammer, PencilRuler } from 'lucide-react'
 import api, { errorMessage } from '../../lib/api'
 import { useT } from '../../i18n/LanguageContext'
 import AuthShell from '../../components/AuthShell'
@@ -10,6 +10,7 @@ const ROLES = [
   { id: 'HOUSE_OWNER', icon: Home, title: 'House owner', text: 'I want to build or renovate' },
   { id: 'CONTRACTOR', icon: Hammer, title: 'Contractor', text: 'I run construction projects' },
   { id: 'LABOUR', icon: HardHat, title: 'Labour', text: 'I work on construction sites' },
+  { id: 'ENGINEER', icon: PencilRuler, title: 'Engineer', text: 'I supervise construction work' },
 ]
 
 export default function Register() {
@@ -43,7 +44,7 @@ export default function Register() {
 
         <div>
           <span className="mb-1.5 block text-sm font-medium text-ink-700">{t('I am a')}</span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {ROLES.map(({ id, icon: Icon, title, text }) => (
               <button key={id} type="button" onClick={() => setForm((f) => ({ ...f, roleName: id }))}
                 className={`flex flex-col items-center rounded-xl border p-3 text-center transition-colors ${

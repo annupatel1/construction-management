@@ -4,5 +4,6 @@ public enum RoleName {
     HOUSE_OWNER,
     CONTRACTOR,
     LABOUR,
+    ENGINEER,
     ADMIN
 }

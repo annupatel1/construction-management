@@ -10,6 +10,7 @@ import { formatINR, formatNumber } from '../lib/format'
 export default function ProjectCard({ project }) {
   const { t } = useT()
   const { user } = useAuth()
+  const isEngineer = user.roleName === 'ENGINEER'
   // show the "other side" of the project
   const other = user.roleName === 'HOUSE_OWNER'
     ? { label: 'Contractor', name: project.contractor?.name }
@@ -27,10 +28,14 @@ export default function ProjectCard({ project }) {
           <p className="flex items-center gap-1.5"><Ruler className="h-4 w-4" /> {formatNumber(project.areaSqFt)} sq ft · {t(LABELS.contractType[project.contractType])}</p>
         </div>
         <div className="mt-3 flex items-end justify-between border-t border-ink-100 pt-3">
-          <div>
-            <p className="text-xs text-ink-500">{t('Estimated cost')}</p>
-            <p className="font-semibold text-ink-900">{formatINR(project.totalEstimatedCost)}</p>
-          </div>
+          {isEngineer
+            ? <p className="text-xs text-ink-500">{t('Read-only engineer access')}</p>
+            : (
+              <div>
+                <p className="text-xs text-ink-500">{t('Estimated cost')}</p>
+                <p className="font-semibold text-ink-900">{formatINR(project.totalEstimatedCost)}</p>
+              </div>
+            )}
           <p className="text-right text-xs text-ink-500">{t(other.label)}<br /><span className="text-sm font-medium text-ink-800">{other.name}</span></p>
         </div>
       </Card>

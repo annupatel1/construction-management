@@ -5,6 +5,7 @@ import com.construction.construction_management.entity.Project;
 import com.construction.construction_management.entity.RoleName;
 import com.construction.construction_management.exception.ResourceNotFoundException;
 import com.construction.construction_management.repository.LabourAssignmentRepository;
+import com.construction.construction_management.repository.ProjectMembershipRepository;
 import com.construction.construction_management.repository.ProjectRepository;
 import com.construction.construction_management.security.CurrentUser;
 import org.springframework.security.access.AccessDeniedException;
@@ -20,13 +21,16 @@ public class AccessGuard {
     private final CurrentUser currentUser;
     private final ProjectRepository projectRepository;
     private final LabourAssignmentRepository assignmentRepository;
+    private final ProjectMembershipRepository membershipRepository;
 
     public AccessGuard(CurrentUser currentUser,
                        ProjectRepository projectRepository,
-                       LabourAssignmentRepository assignmentRepository) {
+                       LabourAssignmentRepository assignmentRepository,
+                       ProjectMembershipRepository membershipRepository) {
         this.currentUser = currentUser;
         this.projectRepository = projectRepository;
         this.assignmentRepository = assignmentRepository;
+        this.membershipRepository = membershipRepository;
     }
 
     private Project load(int projectId) {
@@ -42,11 +46,13 @@ public class AccessGuard {
         return p.getContractor() != null && p.getContractor().getId() == currentUser.id();
     }
 
-    /** Owner, contractor, admin, or a labourer assigned to the project. */
+    /** Owner, contractor, admin, an assigned labourer, or an accepted engineer member. */
     public Project projectForParticipant(int projectId) {
         Project p = load(projectId);
+        int userId = currentUser.id();
         if (currentUser.isAdmin() || isOwner(p) || isContractor(p)
-                || assignmentRepository.existsByLabourIdAndProjectId(currentUser.id(), projectId)) {
+                || assignmentRepository.existsByLabourIdAndProjectId(userId, projectId)
+                || membershipRepository.existsByProjectIdAndUserIdAndActiveTrue(projectId, userId)) {
             return p;
         }
         throw new AccessDeniedException("No access to this project");

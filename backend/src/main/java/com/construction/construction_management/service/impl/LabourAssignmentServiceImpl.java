@@ -105,6 +105,7 @@ public class LabourAssignmentServiceImpl implements LabourAssignmentService {
             case LABOUR -> assignmentRepository.findByLabourId(id, pageable);
             case CONTRACTOR -> assignmentRepository.findByProjectContractorId(id, pageable);
             case HOUSE_OWNER -> assignmentRepository.findByProjectHouseOwnerId(id, pageable);
+            case ENGINEER -> Page.empty(pageable);
             case ADMIN -> assignmentRepository.findAll(pageable);
         };
         return page.map(LabourAssignmentResponse::from).getContent();

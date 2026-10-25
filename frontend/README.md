@@ -21,14 +21,18 @@ Build for production: `npm run build` (output in `dist/`).
 
 OTP codes are printed in the **backend console** (IntelliJ) while `OTP_*_DELIVERY` is `CONSOLE`.
 
-1. Register three accounts (use three different 10-digit numbers starting 6-9):
-   a **House owner**, a **Contractor** and a **Labour**. Copy each OTP from the backend console.
+1. Register accounts (use different 10-digit numbers starting 6-9): a **House owner**, a
+   **Contractor**, a **Labour**, and optionally an **Engineer**. Copy each OTP from the backend console.
 2. **House owner**: Find contractors -> Start project -> pick the contractor, fill details, create.
 3. **Contractor**: open the project -> Labour tab -> Assign labour (pick the labourer, daily rate).
 4. **Contractor**: open the labourer -> mark attendance, pay wages; add material expenses.
 5. **House owner**: open the project -> Payments -> Record payment.
 6. **Labour**: Dashboard shows days worked and pay due; My work shows each site.
-7. Switch language with the button at the top (हिन्दी / English).
+7. **Engineer**: complete the engineer profile, then open Invitations. The owner/contractor can find the
+   engineer in **Find engineers**, open the public profile, choose a project, and send an invitation.
+8. **Engineer**: accept the invitation; the project appears under Projects with read-only access. Financial
+   and wage details stay hidden.
+9. Switch language with the button at the top (हिन्दी / English).
 
 ## What each role can do
 
@@ -37,6 +41,7 @@ OTP codes are printed in the **backend console** (IntelliJ) while `OTP_*_DELIVER
 | House owner | Post requirements, find contractors, start projects, record payments, see expenses and labour |
 | Contractor | Browse open requirements (call the owner), manage projects, assign labour, mark attendance, pay wages, add expenses, see profit |
 | Labour | See assigned sites, attendance, wage sheet and balance due |
+| Engineer | Maintain a public profile, review invitations, accept/decline, see accepted projects read-only |
 | Admin | User list (create the admin account directly in the database) |
 
 ## How money is calculated (on the screen, from the API data)
@@ -57,7 +62,7 @@ src/
   context/      auth (login state), toast messages
   i18n/         language context and hi.js (all Hindi text)
   components/   UI kit (ui.jsx), layout, OTP input, route guards
-  pages/        auth/, owner/, shared/, labour/, admin/ and Dashboard
+  pages/        auth/, owner/, shared/, labour/, engineer/, admin/ and Dashboard
 ```
 
 To add a Hindi translation, add `"English text": "हिन्दी"` to `src/i18n/hi.js`.

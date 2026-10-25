@@ -1,6 +1,6 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
-  Building2, ClipboardList, LayoutDashboard, LogOut, Search, Users, UserCircle, Wrench,
+  Building2, ClipboardList, LayoutDashboard, LogOut, PencilRuler, Search, UserPlus, Users, UserCircle, Wrench,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useT } from '../i18n/LanguageContext'
@@ -15,16 +15,26 @@ const NAV = {
     { to: '/projects', label: 'Projects', icon: Building2 },
     { to: '/requirements', label: 'Requirements', icon: ClipboardList },
     { to: '/contractors', label: 'Find contractors', icon: Search },
+    { to: '/engineers', label: 'Find engineers', icon: PencilRuler },
+    { to: '/invitations', label: 'Invitations', icon: UserPlus },
   ],
   CONTRACTOR: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/my-labour', label: 'My labour', icon: Users },
     { to: '/projects', label: 'Projects', icon: Building2 },
     { to: '/requirements', label: 'Requirements', icon: ClipboardList },
+    { to: '/engineers', label: 'Find engineers', icon: PencilRuler },
+    { to: '/invitations', label: 'Invitations', icon: UserPlus },
   ],
   LABOUR: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/work', label: 'My work', icon: Wrench },
+  ],
+  ENGINEER: [
+    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/invitations', label: 'Invitations', icon: UserPlus },
+    { to: '/projects', label: 'Projects', icon: Building2 },
+    { to: '/engineer-profile', label: 'Engineer profile', icon: PencilRuler },
   ],
   ADMIN: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -91,11 +101,11 @@ export default function Layout() {
       </div>
 
       {/* Mobile bottom navigation */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-ink-200 bg-white lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-ink-200 bg-white lg:hidden">
         {[...items, { to: '/profile', label: 'Profile', icon: UserCircle }].map(({ to, label, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${isActive ? 'text-brand-600' : 'text-ink-500'}`}>
+              `flex min-w-[4.25rem] flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${isActive ? 'text-brand-600' : 'text-ink-500'}`}>
             <Icon className="h-5 w-5" />
             <span className="max-w-full truncate px-1">{t(label)}</span>
           </NavLink>
