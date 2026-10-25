@@ -27,8 +27,8 @@ public class ProjectResponse {
     public static ProjectResponse from(Project p) {
         return new ProjectResponse(
                 p.getId(),
-                UserResponse.from(p.getHouseOwner()),
-                UserResponse.from(p.getContractor()),
+                p.getHouseOwner() == null ? null : UserResponse.from(p.getHouseOwner()),
+                p.getContractor() == null ? null : UserResponse.from(p.getContractor()),
                 p.getTitle(),
                 p.getLocation(),
                 p.getAreaSqFt(),

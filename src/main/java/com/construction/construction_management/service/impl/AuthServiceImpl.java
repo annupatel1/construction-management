@@ -165,6 +165,10 @@ public class AuthServiceImpl implements AuthService {
             // an unverified email cannot be used to log in
             throw new BadCredentialsException("Invalid credentials");
         }
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            // a worker added by a contractor has no password until they register
+            throw new BadCredentialsException("Invalid credentials");
+        }
 
         // Throws BadCredentialsException for a wrong password, DisabledException if the phone is not verified yet.
         authenticationManager.authenticate(

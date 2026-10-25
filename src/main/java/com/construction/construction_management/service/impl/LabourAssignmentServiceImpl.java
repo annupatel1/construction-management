@@ -2,6 +2,7 @@ package com.construction.construction_management.service.impl;
 
 import com.construction.construction_management.dto.LabourAssignmentRequest;
 import com.construction.construction_management.dto.LabourAssignmentResponse;
+import com.construction.construction_management.dto.LabourAssignmentUpdateRequest;
 import com.construction.construction_management.entity.*;
 import com.construction.construction_management.exception.BadRequestException;
 import com.construction.construction_management.exception.ConflictException;
@@ -55,6 +56,21 @@ public class LabourAssignmentServiceImpl implements LabourAssignmentService {
         a.setAdvanceTaken(request.getAdvanceTaken());
         a.setAssignedDate(request.getAssignedDate() != null ? request.getAssignedDate() : LocalDate.now());
 
+        return LabourAssignmentResponse.from(assignmentRepository.save(a));
+    }
+
+    @Override
+    public LabourAssignmentResponse updateAssignment(int assignmentId, LabourAssignmentUpdateRequest request) {
+        LabourAssignment a = guard.assignmentForContractor(assignmentId);
+        a.setDailyRate(request.getDailyRate());
+        a.setAdvanceTaken(request.getAdvanceTaken());
+        return LabourAssignmentResponse.from(assignmentRepository.save(a));
+    }
+
+    @Override
+    public LabourAssignmentResponse updateStatus(int assignmentId, AssignmentStatus status) {
+        LabourAssignment a = guard.assignmentForContractor(assignmentId);
+        a.setStatus(status);
         return LabourAssignmentResponse.from(assignmentRepository.save(a));
     }
 

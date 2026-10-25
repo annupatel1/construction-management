@@ -2,6 +2,8 @@ package com.construction.construction_management.controller;
 
 import com.construction.construction_management.dto.LabourAssignmentRequest;
 import com.construction.construction_management.dto.LabourAssignmentResponse;
+import com.construction.construction_management.dto.LabourAssignmentUpdateRequest;
+import com.construction.construction_management.dto.AssignmentStatusRequest;
 import com.construction.construction_management.service.LabourAssignmentService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +27,22 @@ public class LabourAssignmentController {
                                                  @PathVariable int projectId,
                                                  @Valid @RequestBody LabourAssignmentRequest request) {
         return labourAssignmentService.assignLabour(labourId, projectId, request);
+    }
+
+    /** Change the daily rate or the opening advance of an assignment. */
+    @PreAuthorize("hasRole('CONTRACTOR')")
+    @PatchMapping("/{assignmentId}")
+    public LabourAssignmentResponse updateAssignment(@PathVariable int assignmentId,
+                                                     @Valid @RequestBody LabourAssignmentUpdateRequest request) {
+        return labourAssignmentService.updateAssignment(assignmentId, request);
+    }
+
+    /** Mark a worker as completed / removed on a site. */
+    @PreAuthorize("hasRole('CONTRACTOR')")
+    @PatchMapping("/{assignmentId}/status")
+    public LabourAssignmentResponse updateStatus(@PathVariable int assignmentId,
+                                                 @Valid @RequestBody AssignmentStatusRequest request) {
+        return labourAssignmentService.updateStatus(assignmentId, request.getStatus());
     }
 
     @GetMapping("/project/{projectId}")

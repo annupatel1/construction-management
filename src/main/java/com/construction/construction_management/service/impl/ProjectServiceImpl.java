@@ -65,6 +65,32 @@ public class ProjectServiceImpl implements ProjectService {
         return ProjectResponse.from(projectRepository.save(project));
     }
 
+    @Override
+    public ProjectResponse createOwnProject(ProjectRequest request) {
+        Project project = buildProject(request);
+        project.setHouseOwner(null);
+        project.setContractor(currentUser.get());
+        return ProjectResponse.from(projectRepository.save(project));
+    }
+
+    private Project buildProject(ProjectRequest request) {
+        if (request.getEndDate() != null && request.getEndDate().isBefore(request.getStartDate())) {
+            throw new BadRequestException("End date cannot be before start date");
+        }
+
+        Project project = new Project();
+        project.setTitle(request.getTitle().trim());
+        project.setLocation(request.getLocation().trim());
+        project.setAreaSqFt(request.getAreaSqFt());
+        project.setRatePerSqFt(request.getRatePerSqFt());
+        project.setTotalEstimatedCost(request.getAreaSqFt() * request.getRatePerSqFt());
+        project.setContractType(request.getContractType());
+        project.setStatus(ProjectStatus.ONGOING);
+        project.setStartDate(request.getStartDate());
+        project.setEndDate(request.getEndDate());
+        return project;
+    }
+
     /** Projects that belong to the logged-in user, depending on their role. */
     @Override
     public List<ProjectResponse> getMyProjects() {

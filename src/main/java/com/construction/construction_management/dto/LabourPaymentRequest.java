@@ -1,5 +1,6 @@
 package com.construction.construction_management.dto;
 
+import com.construction.construction_management.entity.LabourPaymentType;
 import com.construction.construction_management.entity.PaymentMode;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -17,5 +18,7 @@ public class LabourPaymentRequest {
     LocalDate paymentDate;
     @NotNull(message = "Payment mode is required")
     PaymentMode mode;
+    /** Optional; defaults to WAGE. Use ADVANCE when giving money in advance. */
+    LabourPaymentType type;
     String remarks;
 }

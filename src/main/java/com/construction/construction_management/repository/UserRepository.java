@@ -13,4 +13,5 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByPhone(String phone);
     boolean existsByEmail(String email);
     List<User> findByRoleNameAndPhoneVerifiedTrue(RoleName roleName);
+    List<User> findByRoleNameAndCreatedByContractorId(RoleName roleName, int contractorId);
 }

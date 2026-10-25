@@ -35,7 +35,7 @@ public class AccessGuard {
     }
 
     private boolean isOwner(Project p) {
-        return p.getHouseOwner().getId() == currentUser.id();
+        return p.getHouseOwner() != null && p.getHouseOwner().getId() == currentUser.id();
     }
 
     private boolean isContractor(Project p) {

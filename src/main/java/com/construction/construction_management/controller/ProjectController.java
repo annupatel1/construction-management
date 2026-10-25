@@ -28,6 +28,13 @@ public class ProjectController {
         return projectService.createProject(contractorId, request);
     }
 
+    /** A contractor can also create and run a site on their own. */
+    @PreAuthorize("hasRole('CONTRACTOR')")
+    @PostMapping
+    public ProjectResponse createOwnProject(@Valid @RequestBody ProjectRequest request) {
+        return projectService.createOwnProject(request);
+    }
+
     /** Projects belonging to the logged-in user. */
     @GetMapping
     public List<ProjectResponse> getMyProjects() {

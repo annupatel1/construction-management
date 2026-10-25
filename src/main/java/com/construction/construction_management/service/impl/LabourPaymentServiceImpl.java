@@ -4,6 +4,7 @@ import com.construction.construction_management.dto.LabourPaymentRequest;
 import com.construction.construction_management.dto.LabourPaymentResponse;
 import com.construction.construction_management.entity.LabourAssignment;
 import com.construction.construction_management.entity.LabourPayment;
+import com.construction.construction_management.entity.LabourPaymentType;
 import com.construction.construction_management.repository.LabourPaymentRepository;
 import com.construction.construction_management.service.AccessGuard;
 import com.construction.construction_management.service.LabourPaymentService;
@@ -29,6 +30,7 @@ public class LabourPaymentServiceImpl implements LabourPaymentService {
                 p.getAmount(),
                 p.getPaymentDate(),
                 p.getMode().toString(),
+                p.getType() == null ? LabourPaymentType.WAGE.toString() : p.getType().toString(),
                 p.getRemarks()
         );
     }
@@ -42,6 +44,7 @@ public class LabourPaymentServiceImpl implements LabourPaymentService {
         p.setAmount(request.getAmount());
         p.setPaymentDate(request.getPaymentDate());
         p.setMode(request.getMode());
+        p.setType(request.getType() == null ? LabourPaymentType.WAGE : request.getType());
         p.setRemarks(request.getRemarks());
         return toResponse(labourPaymentRepository.save(p));
     }

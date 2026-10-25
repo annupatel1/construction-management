@@ -34,4 +34,8 @@ public class User {
 
     @ManyToOne
     Role role;
+
+    /** Set when a contractor adds a worker who has not registered in the app yet. */
+    @ManyToOne
+    User createdByContractor;
 }

@@ -31,6 +31,10 @@ public class LabourPayment {
     @Enumerated(EnumType.STRING)
     PaymentMode mode;
 
+    /** WAGE for normal wage payments, ADVANCE for money given in advance. Null on old rows = WAGE. */
+    @Enumerated(EnumType.STRING)
+    LabourPaymentType type;
+
     String remarks;
 
 }

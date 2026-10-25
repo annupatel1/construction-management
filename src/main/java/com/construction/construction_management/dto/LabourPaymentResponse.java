@@ -16,6 +16,7 @@ public class LabourPaymentResponse {
     double amount;
     LocalDate paymentDate;
     String mode;
+    String type;
     String remarks;
 
 }
