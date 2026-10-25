@@ -12,9 +12,11 @@ This repository contains both applications:
 ## Features
 
 - House owners post requirements, hire contractors, start projects, and track payments.
-- Contractors manage projects, assign labour, mark attendance, log material expenses, and pay wages.
+- Contractors manage projects, assign labour, mark attendance, request and procure materials, track stock,
+  and pay wages.
 - Labourers see assigned sites, attendance, and wage balances.
 - Engineers publish a professional profile, get discovered by owners/contractors, and join projects through invitations with scoped site access.
+- Material requests, purchase orders, goods receipts, a traceable stock ledger, and low-stock warnings.
 - Two contract types: **Labour Only** and **Labour + Material**.
 - JWT authentication, OTP verification, and role-based access control.
 
@@ -53,7 +55,7 @@ The backend schema is owned by Flyway (`spring.jpa.hibernate.ddl-auto=none`):
   vendor migrations for MySQL or H2.
 - A database created by the older `ddl-auto=update` setup is baselined at `V1`, then upgraded by the
   MySQL migrations (`V2` gate-0 hardening, `V3` audit events, `V4` engineer marketplace,
-  `V5` site execution).
+  `V5` site execution, `V6` materials and procurement).
 - Automated tests run the same migrations against in-memory H2 in MySQL mode. No Docker or MySQL is
   required for `mvn test`.
 
@@ -92,6 +94,19 @@ Gate 3 site execution is in place:
   read site execution records, and financial data stays hidden from engineers.
 - Progress report lists are paginated; task, milestone, and issue lists are bounded and support
   `page`/`size`.
+
+Gate 4 materials and procurement is in place:
+
+- Project material catalog with category, unit, minimum-stock threshold, and a stock balance derived
+  from movements rather than an editable number.
+- Material requests with requester, needed-by date, contractor/admin approval or rejection, and
+  cancellation by the requester or contractor.
+- Suppliers and purchase orders; approved requests can be converted into orders without re-typing.
+- Partial or full goods receipts. Each receipt posts a stock-in movement and creates a material expense,
+  so project finance and stock stay aligned.
+- Manual issue, return, and wastage movements with negative-stock protection. Stock, requests,
+  movements, and low-stock counts are visible to the project team; purchase prices and supplier details
+  stay owner/contractor/admin-only.
 
 ## Tests and CI
 

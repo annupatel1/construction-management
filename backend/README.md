@@ -7,10 +7,12 @@ owned by Flyway migrations.
 ## Overview
 
 - **House Owners** post requirements, hire contractors, and track payments.
-- **Contractors** run sites, assign labour, mark attendance, log material expenses, and pay wages.
+- **Contractors** run sites, assign labour, mark attendance, request and procure materials, track stock,
+  and pay wages.
 - **Labourers** see assigned sites, attendance, and wage balances.
 - **Engineers** publish a professional profile, receive project invitations, and get scoped site access after
-  accepting (progress reports, assigned tasks and issues); financial details stay private.
+  accepting (progress reports, assigned tasks, issues, stock visibility and usage updates); financial,
+  supplier, and purchase-order details stay private.
 - Two contract types: **Labour Only** (owner supplies material) and **Labour + Material**
   (contractor supplies material).
 
@@ -42,7 +44,7 @@ In development, OTP codes are printed in the server log (`OTP_*_DELIVERY=CONSOLE
 
 Migrations live in `src/main/resources/db/migration`:
 
-- `common/` — shared baseline, audit table, engineer marketplace, and site execution tables
+- `common/` — shared baseline, audit table, engineer marketplace, site execution, and materials tables
 - `mysql/` — production upgrades
 - `h2/` — the same upgrades, written for the H2 test database
 
@@ -54,8 +56,8 @@ spring.flyway.baseline-version=1
 
 A fresh database runs `V1` and then the vendor migrations. An existing database created by the old
 `ddl-auto=update` setup is baselined at `V1` and then receives the vendor migrations. The current
-schema is at `V5` (site execution). Never edit a migration that has already run in an environment;
-add a new one instead.
+schema is at `V6` (materials and procurement). Never edit a migration that has already run in an
+environment; add a new one instead.
 
 ## Tests
 
@@ -127,3 +129,24 @@ Start with `SPRING_PROFILES_ACTIVE=prod` and provide the environment variables r
 - All site routes require the owner, contractor, admin, or an active engineer membership. Labour is
   denied even when assigned to the project. Every create/update/status change is written to the audit
   trail.
+
+## Materials and procurement
+
+- `material_item`: project catalog with category, unit, minimum-stock threshold, and active flag.
+- `supplier`: project supplier directory (owner/contractor/admin only).
+- `material_request`: requested quantity, needed-by date, requester, and
+  REQUESTED → APPROVED/REJECTED → ORDERED → FULFILLED lifecycle. Requests can be cancelled while
+  requested or approved; cancelling an unreceived purchase order returns the request to approved.
+- `purchase_order`: supplier, ordered/received quantities, unit price, total, status, and expected date.
+  Partial receipts are supported; unreceived orders can be cancelled and re-created.
+- `goods_receipt`: partial or full receipt; each receipt creates a `RECEIPT` stock movement and a
+  material `Expense` so procurement cost appears in project finance.
+- `stock_movement`: traceable RECEIPT, ISSUE, RETURN, and WASTAGE entries. Balances are calculated from
+  the ledger, never edited directly. Issue/wastage is rejected when it would make stock negative.
+- Routes under `/api/projects/{projectId}`: `stock-ledger`, `materials`, `suppliers`,
+  `material-requests`, `purchase-orders`, and `stock-movements`.
+- Owners see procurement read-only. Contractors and admins manage materials, suppliers, approvals,
+  purchase orders, and receipts. Engineers can read stock (with receipt unit costs redacted), raise
+  material requests, and record issue/return/wastage movements, but cannot approve requests, manage
+  suppliers, create purchase orders, or receive goods. Labour is denied.
+- Lists are bounded; the stock ledger returns the latest 100 movements by default.

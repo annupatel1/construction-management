@@ -13,6 +13,7 @@ import CallButton from '../../components/Contact'
 import StatusBadge from '../../components/Status'
 import { Alert, Button, Card, ErrorState, PageLoader, Progress, Row, StatCard, Tabs } from '../../components/ui'
 import { ExpensesTab, LabourTab, PaymentsTab } from './ProjectTabs'
+import { MaterialsTab } from './ProjectMaterialsTab'
 import { IssuesTab, MilestonesTab, ProgressTab, SiteSnapshot, TasksTab } from './ProjectSiteTabs'
 
 const get = (url) => api.get(url).then((r) => r.data)
@@ -34,22 +35,28 @@ export default function ProjectDetail() {
     const project = await get(`/api/projects/${id}`)
     if (!canViewSite) return { project }
 
-    const [progressReports, tasks, milestones, issues] = await Promise.all([
+    const [progressReports, tasks, milestones, issues, stockLedger, materialRequests] = await Promise.all([
       get(`/api/projects/${id}/progress-reports`),
       get(`/api/projects/${id}/tasks`),
       get(`/api/projects/${id}/milestones`),
       get(`/api/projects/${id}/issues`),
+      get(`/api/projects/${id}/stock-ledger`),
+      get(`/api/projects/${id}/material-requests`),
     ])
 
     if (!canViewFinance) {
-      return { project, progressReports, tasks, milestones, issues }
+      return {
+        project, progressReports, tasks, milestones, issues, stockLedger, materialRequests,
+      }
     }
 
-    const [payments, expenses, assignments, engineers] = await Promise.all([
+    const [payments, expenses, assignments, engineers, suppliers, purchaseOrders] = await Promise.all([
       get(`/api/payments/project/${id}`),
       get(`/api/expenses/project/${id}`),
       get(`/api/assignments/project/${id}`),
       canViewEngineers ? get(`/api/projects/${id}/engineers`) : Promise.resolve([]),
+      get(`/api/projects/${id}/suppliers`),
+      get(`/api/projects/${id}/purchase-orders`),
     ])
     // wage figures are only visible to the contractor (house owners may not see wages)
     let wages = []
@@ -59,7 +66,10 @@ export default function ProjectDetail() {
         return wageSummary(a, att, lp)
       }))
     }
-    return { project, progressReports, tasks, milestones, issues, payments, expenses, assignments, wages, engineers }
+    return {
+      project, progressReports, tasks, milestones, issues, stockLedger, materialRequests,
+      payments, expenses, assignments, wages, engineers, suppliers, purchaseOrders,
+    }
   }, [id, role, canViewSite, canViewFinance, canViewEngineers])
 
   if (loading) return <PageLoader />
@@ -67,6 +77,7 @@ export default function ProjectDetail() {
 
   const {
     project, progressReports = [], tasks = [], milestones = [], issues = [],
+    stockLedger = null, materialRequests = [], suppliers = [], purchaseOrders = [],
     payments = [], expenses = [], assignments = [], wages = [], engineers = [],
   } = data
   const fin = projectFinance(project, payments, expenses, wages)
@@ -74,6 +85,8 @@ export default function ProjectDetail() {
   const isContractor = role === 'CONTRACTOR'
   const openTasks = tasks.filter((task) => task.status !== 'DONE').length
   const openIssues = issues.filter((issue) => issue.status !== 'RESOLVED').length
+  const materials = stockLedger?.materials || []
+  const lowStockCount = stockLedger?.lowStockCount || 0
 
   const changeStatus = async (status) => {
     try {
@@ -90,6 +103,7 @@ export default function ProjectDetail() {
       { id: 'tasks', label: `${t('Tasks')} (${openTasks})` },
       { id: 'milestones', label: `${t('Milestones')} (${milestones.length})` },
       { id: 'issues', label: `${t('Issues')} (${openIssues})` },
+      { id: 'materials', label: `${t('Materials')} (${materials.length})` },
     )
   }
   if (canViewFinance) {
@@ -137,6 +151,11 @@ export default function ProjectDetail() {
 
       {tab === 'overview' && (
         <div className="space-y-5">
+          {canViewSite && lowStockCount > 0 && (
+            <Alert tone="warning">
+              {t('{n} materials are below their minimum stock level.', { n: lowStockCount })}
+            </Alert>
+          )}
           {canViewSite && (
             <SiteSnapshot reports={progressReports} tasks={tasks} milestones={milestones} issues={issues} />
           )}
@@ -240,6 +259,10 @@ export default function ProjectDetail() {
       )}
       {tab === 'issues' && canViewSite && (
         <IssuesTab project={project} issues={issues} engineers={engineers} role={role} onChange={reload} />
+      )}
+      {tab === 'materials' && canViewSite && (
+        <MaterialsTab project={project} stockLedger={stockLedger} suppliers={suppliers}
+          requests={materialRequests} orders={purchaseOrders} role={role} onChange={reload} />
       )}
       {tab === 'labour' && canViewFinance && <LabourTab project={project} assignments={assignments} role={role} onChange={reload} />}
       {tab === 'expenses' && canViewFinance && <ExpensesTab project={project} expenses={expenses} role={role} onChange={reload} />}

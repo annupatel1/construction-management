@@ -34,18 +34,21 @@ OTP codes are printed in the **backend console** (IntelliJ) while `OTP_*_DELIVER
    and wage details stay hidden.
 9. **Contractor/Engineer**: open a project's **Progress** tab, save a daily report, submit it, then publish it
    (owner, contractor, or admin). Add **Tasks**, **Milestones**, and **Issues** from their tabs.
-10. **House owner**: the **Progress** tab shows published reports only. Open Issues to review or resolve
-    quality/safety problems, and Tasks/Milestones to track the plan.
-11. Switch language with the button at the top (हिन्दी / English).
+10. **Contractor**: open **Materials**, add the site catalog and suppliers, then raise/approve material
+    requests, create purchase orders, receive goods, and record issue/return/wastage movements.
+11. **House owner**: the **Progress** tab shows published reports only. Open Issues to review or resolve
+    quality/safety problems, and Tasks/Milestones to track the plan. Materials shows stock, requests and
+    purchase orders, including low-stock warnings.
+12. Switch language with the button at the top (हिन्दी / English).
 
 ## What each role can do
 
 | Role | Screens |
 |---|---|
-| House owner | Post requirements, find contractors, start projects, record payments, see expenses and labour, follow published progress, tasks, milestones and issues |
-| Contractor | Browse open requirements (call the owner), manage projects, assign labour, mark attendance, pay wages, add expenses, run site reports/tasks/milestones/issues, see profit |
+| House owner | Post requirements, find contractors, start projects, record payments, see expenses and labour, follow published progress, tasks, milestones, issues, stock and purchase orders |
+| Contractor | Browse open requirements (call the owner), manage projects, assign labour, mark attendance, pay wages, add expenses, run site reports/tasks/milestones/issues, manage material requests, suppliers, purchase orders, receipts and stock movements, see profit |
 | Labour | See assigned sites, attendance, wage sheet and balance due |
-| Engineer | Maintain a public profile, review invitations, accept/decline, see accepted projects, write daily reports, update assigned tasks, raise/comment on issues |
+| Engineer | Maintain a public profile, review invitations, accept/decline, see accepted projects, write daily reports, update assigned tasks, raise/comment on issues, request materials and record stock usage |
 | Admin | User list (create the admin account directly in the database) |
 
 ## How money is calculated (on the screen, from the API data)
@@ -67,7 +70,8 @@ src/
   i18n/         language context and hi.js (all Hindi text)
   components/   UI kit (ui.jsx), layout, OTP input, route guards
   pages/        auth/, owner/, shared/, labour/, engineer/, admin/ and Dashboard
-                (site execution UI: pages/shared/ProjectSiteTabs.jsx)
+                (site execution UI: pages/shared/ProjectSiteTabs.jsx;
+                 materials/procurement UI: pages/shared/ProjectMaterialsTab.jsx)
 ```
 
 To add a Hindi translation, add `"English text": "हिन्दी"` to `src/i18n/hi.js`.

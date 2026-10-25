@@ -22,6 +22,15 @@ export const LABELS = {
     READY_FOR_REVIEW: 'Ready for review', RESOLVED: 'Resolved', REOPENED: 'Reopened',
   },
   issueCategory: { QUALITY: 'Quality', SAFETY: 'Safety', DELAY: 'Delay', OTHER: 'Other' },
+  materialRequestStatus: {
+    REQUESTED: 'Requested', APPROVED: 'Approved', REJECTED: 'Rejected',
+    ORDERED: 'Ordered', FULFILLED: 'Fulfilled', CANCELLED: 'Cancelled',
+  },
+  purchaseOrderStatus: {
+    ORDERED: 'Ordered', PARTIALLY_RECEIVED: 'Partially received',
+    RECEIVED: 'Received', CANCELLED: 'Cancelled',
+  },
+  stockMovementType: { RECEIPT: 'Receipt', ISSUE: 'Issued', RETURN: 'Returned', WASTAGE: 'Wastage' },
 }
 
 export const options = (group) => Object.keys(LABELS[group])
@@ -38,6 +47,9 @@ export const STATUS_TONE = {
   TODO: 'neutral', IN_PROGRESS: 'brand', BLOCKED: 'danger', DONE: 'success',
   PLANNED: 'neutral', DELAYED: 'warning',
   ASSIGNED: 'brand', READY_FOR_REVIEW: 'warning', RESOLVED: 'success', REOPENED: 'danger',
+  REQUESTED: 'warning', APPROVED: 'success', REJECTED: 'danger',
+  ORDERED: 'brand', PARTIALLY_RECEIVED: 'warning', RECEIVED: 'success', FULFILLED: 'success',
+  ISSUE: 'brand', RETURN: 'warning', WASTAGE: 'danger', RECEIPT: 'success',
 }
 
 // Some enum values mean different things in different groups (for example, OPEN).
@@ -50,4 +62,14 @@ export const GROUP_STATUS_TONE = {
   progressStatus: { DRAFT: 'neutral', SUBMITTED: 'warning', PUBLISHED: 'success' },
   taskStatus: { TODO: 'neutral', IN_PROGRESS: 'brand', BLOCKED: 'danger', DONE: 'success' },
   milestoneStatus: { PLANNED: 'neutral', IN_PROGRESS: 'brand', COMPLETED: 'success', DELAYED: 'warning' },
+  materialRequestStatus: {
+    REQUESTED: 'warning', APPROVED: 'success', REJECTED: 'danger',
+    ORDERED: 'brand', FULFILLED: 'success', CANCELLED: 'neutral',
+  },
+  purchaseOrderStatus: {
+    ORDERED: 'brand', PARTIALLY_RECEIVED: 'warning', RECEIVED: 'success', CANCELLED: 'neutral',
+  },
+  stockMovementType: {
+    RECEIPT: 'success', ISSUE: 'brand', RETURN: 'warning', WASTAGE: 'danger',
+  },
 }
