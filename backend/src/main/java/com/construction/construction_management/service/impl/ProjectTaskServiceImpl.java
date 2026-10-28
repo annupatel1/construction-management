@@ -4,6 +4,7 @@ import com.construction.construction_management.dto.TaskRequest;
 import com.construction.construction_management.dto.TaskResponse;
 import com.construction.construction_management.dto.TaskStatusRequest;
 import com.construction.construction_management.entity.Milestone;
+import com.construction.construction_management.entity.NotificationType;
 import com.construction.construction_management.entity.Project;
 import com.construction.construction_management.entity.ProjectTask;
 import com.construction.construction_management.entity.RoleName;
@@ -17,6 +18,7 @@ import com.construction.construction_management.repository.UserRepository;
 import com.construction.construction_management.security.CurrentUser;
 import com.construction.construction_management.service.AccessGuard;
 import com.construction.construction_management.service.AuditService;
+import com.construction.construction_management.service.NotificationService;
 import com.construction.construction_management.service.ProjectTaskService;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.PageRequest;
@@ -40,19 +42,22 @@ public class ProjectTaskServiceImpl implements ProjectTaskService {
     private final CurrentUser currentUser;
     private final AccessGuard guard;
     private final AuditService auditService;
+    private final NotificationService notificationService;
 
     public ProjectTaskServiceImpl(ProjectTaskRepository taskRepository,
                                   MilestoneRepository milestoneRepository,
                                   UserRepository userRepository,
                                   CurrentUser currentUser,
                                   AccessGuard guard,
-                                  AuditService auditService) {
+                                  AuditService auditService,
+                                  NotificationService notificationService) {
         this.taskRepository = taskRepository;
         this.milestoneRepository = milestoneRepository;
         this.userRepository = userRepository;
         this.currentUser = currentUser;
         this.guard = guard;
         this.auditService = auditService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -98,6 +103,7 @@ public class ProjectTaskServiceImpl implements ProjectTaskService {
         ProjectTask saved = taskRepository.save(task);
         auditService.record("TASK_CREATED", "ProjectTask", saved.getId(),
                 "projectId=" + projectId + "; title=" + saved.getTitle());
+        notifyAssignee(saved);
         return TaskResponse.from(saved);
     }
 
@@ -106,11 +112,16 @@ public class ProjectTaskServiceImpl implements ProjectTaskService {
     public TaskResponse update(int projectId, int taskId, TaskRequest request) {
         Project project = guard.projectForSiteManagement(projectId);
         ProjectTask task = load(projectId, taskId);
+        Integer previousAssignee = task.getAssignee() == null ? null : task.getAssignee().getId();
         apply(project, task, request);
         task.setUpdatedAt(LocalDateTime.now());
         ProjectTask saved = taskRepository.save(task);
         auditService.record("TASK_UPDATED", "ProjectTask", saved.getId(),
                 "projectId=" + projectId + "; status=" + saved.getStatus());
+        if (saved.getAssignee() != null
+                && (previousAssignee == null || previousAssignee != saved.getAssignee().getId())) {
+            notifyAssignee(saved);
+        }
         return TaskResponse.from(saved);
     }
 
@@ -153,6 +164,16 @@ public class ProjectTaskServiceImpl implements ProjectTaskService {
     private ProjectTask load(int projectId, int taskId) {
         return taskRepository.findByIdAndProjectId(taskId, projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+    }
+
+    private void notifyAssignee(ProjectTask task) {
+        if (task.getAssignee() == null) {
+            return;
+        }
+        notificationService.send(task.getAssignee(), task.getProject(), NotificationType.TASK_ASSIGNED,
+                "Task assigned",
+                task.getTitle() + (task.getDueDate() == null ? "" : " · due " + task.getDueDate()),
+                "/projects/" + task.getProject().getId());
     }
 
     private void apply(Project project, ProjectTask task, TaskRequest request) {

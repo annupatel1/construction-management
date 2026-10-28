@@ -1,8 +1,10 @@
 package com.construction.construction_management.exception;
 
 import com.construction.construction_management.dto.ErrorResponse;
+import com.construction.construction_management.security.RequestIdFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +30,8 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, String code) {
-        return new ResponseEntity<>(new ErrorResponse(status.value(), message, LocalDateTime.now(), code), status);
+        return new ResponseEntity<>(new ErrorResponse(status.value(), message, LocalDateTime.now(), code,
+                MDC.get(RequestIdFilter.MDC_KEY)), status);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -38,17 +41,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
-        return build(HttpStatus.NOT_FOUND, ex.getMessage());
+        return build(HttpStatus.NOT_FOUND, "The requested resource could not be found");
     }
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex) {
-        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, "Invalid request. Please check the values you sent");
     }
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex) {
-        return build(HttpStatus.CONFLICT, ex.getMessage());
+        return build(HttpStatus.CONFLICT, "This record conflicts with existing data");
     }
 
     @ExceptionHandler(BadCredentialsException.class)

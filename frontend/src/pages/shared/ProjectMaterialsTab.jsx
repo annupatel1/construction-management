@@ -10,6 +10,7 @@ import { useT } from '../../i18n/LanguageContext'
 import { LABELS, options } from '../../lib/labels'
 import { formatDate, formatINR, todayISO } from '../../lib/format'
 import StatusBadge from '../../components/Status'
+import ExportButton from '../../components/ExportButton'
 import { Alert, Button, Card, Input, Modal, Progress, Select, Textarea } from '../../components/ui'
 const canManageMaterials = (role) => role === 'CONTRACTOR' || role === 'ADMIN'
 const canRequestMaterials = (role) =>
@@ -102,6 +103,10 @@ export function MaterialsTab({
           {t('Stock is calculated from purchase receipts and site movements.')}
         </p>
         <div className="flex flex-wrap gap-2">
+          {viewProcurement && (
+            <ExportButton path={`/api/projects/${project.id}/exports/stock.csv`}
+              label="Export stock ledger" />
+          )}
           {manage && (
             <Button variant="secondary" onClick={() => setDialog({ type: 'material', item: null })}>
               <Plus className="h-4 w-4" /> {t('Add material')}

@@ -1,6 +1,6 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
-  Building2, ClipboardList, LayoutDashboard, LogOut, PencilRuler, Search, UserPlus, Users, UserCircle, Wrench,
+  Building2, ClipboardList, LayoutDashboard, LogOut, PencilRuler, Search, UserPlus, Users, UserCircle, Wrench, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useT } from '../i18n/LanguageContext'
@@ -8,10 +8,13 @@ import { LABELS } from '../lib/labels'
 import { initials } from '../lib/format'
 import Logo from './Logo'
 import LanguageToggle from './LanguageToggle'
+import NotificationBell from './NotificationBell'
+import LegalLinks from './LegalLinks'
 
 const NAV = {
   HOUSE_OWNER: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/ai-intelligence', label: 'AI Intelligence', icon: Sparkles },
     { to: '/projects', label: 'Projects', icon: Building2 },
     { to: '/requirements', label: 'Requirements', icon: ClipboardList },
     { to: '/contractors', label: 'Find contractors', icon: Search },
@@ -20,6 +23,7 @@ const NAV = {
   ],
   CONTRACTOR: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/ai-intelligence', label: 'AI Intelligence', icon: Sparkles },
     { to: '/my-labour', label: 'My labour', icon: Users },
     { to: '/projects', label: 'Projects', icon: Building2 },
     { to: '/requirements', label: 'Requirements', icon: ClipboardList },
@@ -28,16 +32,19 @@ const NAV = {
   ],
   LABOUR: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/ai-intelligence', label: 'AI Intelligence', icon: Sparkles },
     { to: '/work', label: 'My work', icon: Wrench },
   ],
   ENGINEER: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/ai-intelligence', label: 'AI Intelligence', icon: Sparkles },
     { to: '/invitations', label: 'Invitations', icon: UserPlus },
     { to: '/projects', label: 'Projects', icon: Building2 },
     { to: '/engineer-profile', label: 'Engineer profile', icon: PencilRuler },
   ],
   ADMIN: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/ai-intelligence', label: 'AI Intelligence', icon: Sparkles },
     { to: '/users', label: 'Users', icon: Users },
     { to: '/projects', label: 'Projects', icon: Building2 },
   ],
@@ -87,6 +94,7 @@ export default function Layout() {
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-ink-200 bg-white/90 px-4 backdrop-blur lg:justify-end">
           <div className="lg:hidden"><Logo /></div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <LanguageToggle />
             <Link to="/profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white lg:hidden"
               aria-label="Profile">
@@ -98,6 +106,10 @@ export default function Layout() {
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-8">
           <Outlet />
         </main>
+
+        <footer className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6 lg:pb-6">
+          <LegalLinks />
+        </footer>
       </div>
 
       {/* Mobile bottom navigation */}

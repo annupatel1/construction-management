@@ -10,10 +10,19 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.List;
 
 public interface StockMovementRepository extends JpaRepository<StockMovement, Integer> {
 
     Page<StockMovement> findByProjectIdOrderByMovementDateDescIdDesc(int projectId, Pageable pageable);
+
+    @Query("""
+            select m from StockMovement m
+            join fetch m.material
+            where m.project.id = :projectId
+            order by m.material.name asc, m.movementDate asc, m.id asc
+            """)
+    List<StockMovement> findAllForProjectExport(@Param("projectId") int projectId);
 
     boolean existsByMaterialId(int materialId);
 

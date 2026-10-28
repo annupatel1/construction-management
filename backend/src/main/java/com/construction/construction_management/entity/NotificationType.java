@@ -1,0 +1,16 @@
+package com.construction.construction_management.entity;
+
+public enum NotificationType {
+    ENGINEER_INVITED,
+    INVITATION_ACCEPTED,
+    INVITATION_DECLINED,
+    INVITATION_CANCELLED,
+    ENGINEER_REMOVED,
+    MATERIAL_REQUESTED,
+    MATERIAL_REQUEST_REVIEWED,
+    GOODS_RECEIVED,
+    TASK_ASSIGNED,
+    ISSUE_ASSIGNED,
+    ISSUE_COMMENTED,
+    PAYMENT_RECORDED
+}

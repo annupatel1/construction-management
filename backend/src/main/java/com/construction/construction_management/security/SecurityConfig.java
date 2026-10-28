@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
@@ -31,10 +32,13 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
+    private final RequestIdFilter requestIdFilter;
 
-    public SecurityConfig(CustomUserDetailsService userDetailsService, JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(CustomUserDetailsService userDetailsService, JwtAuthFilter jwtAuthFilter,
+                          RequestIdFilter requestIdFilter) {
         this.userDetailsService = userDetailsService;
         this.jwtAuthFilter = jwtAuthFilter;
+        this.requestIdFilter = requestIdFilter;
     }
 
     @Bean
@@ -60,7 +64,9 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Accept-Language"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Accept-Language",
+                RequestIdFilter.HEADER));
+        config.setExposedHeaders(List.of(RequestIdFilter.HEADER, HttpHeaders.CONTENT_DISPOSITION));
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -81,11 +87,12 @@ public class SecurityConfig {
                                 writeJson(res, HttpServletResponse.SC_FORBIDDEN,
                                         "You don't have permission to perform this action")))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/error").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/health", "/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(requestIdFilter, JwtAuthFilter.class);
 
         return http.build();
     }
@@ -93,7 +100,9 @@ public class SecurityConfig {
     private static void writeJson(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
+        String requestId = response.getHeader(RequestIdFilter.HEADER);
         response.getWriter().write("{\"status\":" + status + ",\"message\":\"" + message.replace("\"", "'")
-                + "\",\"timestamp\":\"" + LocalDateTime.now() + "\"}");
+                + "\",\"timestamp\":\"" + LocalDateTime.now() + "\",\"requestId\":\""
+                + (requestId == null ? "" : requestId) + "\"}");
     }
 }

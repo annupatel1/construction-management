@@ -18,6 +18,7 @@ import com.construction.construction_management.entity.GoodsReceipt;
 import com.construction.construction_management.entity.MaterialItem;
 import com.construction.construction_management.entity.MaterialRequest;
 import com.construction.construction_management.entity.MaterialRequestStatus;
+import com.construction.construction_management.entity.NotificationType;
 import com.construction.construction_management.entity.Project;
 import com.construction.construction_management.entity.PurchaseOrder;
 import com.construction.construction_management.entity.PurchaseOrderStatus;
@@ -25,6 +26,7 @@ import com.construction.construction_management.entity.RoleName;
 import com.construction.construction_management.entity.StockMovement;
 import com.construction.construction_management.entity.StockMovementType;
 import com.construction.construction_management.entity.Supplier;
+import com.construction.construction_management.entity.User;
 import com.construction.construction_management.exception.BadRequestException;
 import com.construction.construction_management.exception.ResourceNotFoundException;
 import com.construction.construction_management.repository.ExpenseRepository;
@@ -37,6 +39,7 @@ import com.construction.construction_management.security.CurrentUser;
 import com.construction.construction_management.service.AccessGuard;
 import com.construction.construction_management.service.AuditService;
 import com.construction.construction_management.service.MaterialsService;
+import com.construction.construction_management.service.NotificationService;
 import com.construction.construction_management.util.Money;
 import com.construction.construction_management.util.Pages;
 import org.springframework.data.domain.PageRequest;
@@ -66,6 +69,7 @@ public class MaterialsServiceImpl implements MaterialsService {
     private final CurrentUser currentUser;
     private final AccessGuard guard;
     private final AuditService auditService;
+    private final NotificationService notificationService;
 
     public MaterialsServiceImpl(MaterialItemRepository materialRepository,
                                 SupplierRepository supplierRepository,
@@ -75,7 +79,8 @@ public class MaterialsServiceImpl implements MaterialsService {
                                 ExpenseRepository expenseRepository,
                                 CurrentUser currentUser,
                                 AccessGuard guard,
-                                AuditService auditService) {
+                                AuditService auditService,
+                                NotificationService notificationService) {
         this.materialRepository = materialRepository;
         this.supplierRepository = supplierRepository;
         this.requestRepository = requestRepository;
@@ -85,6 +90,7 @@ public class MaterialsServiceImpl implements MaterialsService {
         this.currentUser = currentUser;
         this.guard = guard;
         this.auditService = auditService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -253,6 +259,10 @@ public class MaterialsServiceImpl implements MaterialsService {
         auditService.record("MATERIAL_REQUESTED", "MaterialRequest", saved.getId(),
                 "projectId=" + projectId + "; material=" + material.getName()
                         + "; quantity=" + saved.getQuantity());
+        notifyManagers(project, NotificationType.MATERIAL_REQUESTED, "Material requested",
+                currentUser.get().getName() + " requested " + saved.getQuantity().toPlainString()
+                        + " " + material.getUnit() + " of " + material.getName(),
+                "/projects/" + projectId);
         return MaterialRequestResponse.from(saved);
     }
 
@@ -268,6 +278,7 @@ public class MaterialsServiceImpl implements MaterialsService {
         MaterialRequest saved = requestRepository.save(materialRequest);
         auditService.record("MATERIAL_REQUEST_APPROVED", "MaterialRequest", saved.getId(),
                 "projectId=" + projectId);
+        notifyRequestReviewed(saved);
         return MaterialRequestResponse.from(saved);
     }
 
@@ -283,6 +294,7 @@ public class MaterialsServiceImpl implements MaterialsService {
         MaterialRequest saved = requestRepository.save(materialRequest);
         auditService.record("MATERIAL_REQUEST_REJECTED", "MaterialRequest", saved.getId(),
                 "projectId=" + projectId);
+        notifyRequestReviewed(saved);
         return MaterialRequestResponse.from(saved);
     }
 
@@ -481,6 +493,7 @@ public class MaterialsServiceImpl implements MaterialsService {
                 "projectId=" + projectId + "; orderId=" + orderId
                         + "; quantity=" + quantity + "; amount=" + amount
                         + "; expenseId=" + savedExpense.getId());
+        notifyGoodsReceived(saved, quantity);
         return PurchaseOrderResponse.from(saved);
     }
 
@@ -559,6 +572,55 @@ public class MaterialsServiceImpl implements MaterialsService {
                 "projectId=" + projectId + "; material=" + material.getName()
                         + "; type=" + type + "; quantity=" + quantity);
         return StockMovementResponse.from(saved, canViewProcurement());
+    }
+
+    private void notifyManagers(Project project, NotificationType type, String title,
+                                String body, String link) {
+        notificationService.send(project.getHouseOwner(), project, type, title, body, link);
+        if (project.getContractor() != null
+                && (project.getHouseOwner() == null
+                || project.getContractor().getId() != project.getHouseOwner().getId())) {
+            notificationService.send(project.getContractor(), project, type, title, body, link);
+        }
+    }
+
+    private void notifyRequestReviewed(MaterialRequest request) {
+        String status = request.getStatus() == MaterialRequestStatus.APPROVED ? "approved" : "rejected";
+        String body = "Your request for " + request.getQuantity().toPlainString() + " "
+                + request.getMaterial().getUnit() + " of " + request.getMaterial().getName()
+                + " was " + status;
+        if (request.getReviewNote() != null) {
+            body += ": " + request.getReviewNote();
+        }
+        notificationService.send(request.getRequestedBy(), request.getProject(),
+                NotificationType.MATERIAL_REQUEST_REVIEWED,
+                "Material request " + status,
+                body,
+                "/projects/" + request.getProject().getId());
+    }
+
+    private void notifyGoodsReceived(PurchaseOrder order, BigDecimal quantity) {
+        Project project = order.getProject();
+        String body = quantity.toPlainString() + " " + order.getMaterial().getUnit() + " of "
+                + order.getMaterial().getName() + " received for " + project.getTitle();
+        User owner = project.getHouseOwner();
+        User contractor = project.getContractor();
+        notificationService.send(owner, project, NotificationType.GOODS_RECEIVED,
+                "Goods received", body, "/projects/" + project.getId());
+        if (contractor != null && (owner == null || contractor.getId() != owner.getId())) {
+            notificationService.send(contractor, project, NotificationType.GOODS_RECEIVED,
+                    "Goods received", body, "/projects/" + project.getId());
+        }
+        MaterialRequest request = order.getMaterialRequest();
+        if (request != null) {
+            User requester = request.getRequestedBy();
+            boolean alreadyNotified = (owner != null && requester.getId() == owner.getId())
+                    || (contractor != null && requester.getId() == contractor.getId());
+            if (!alreadyNotified) {
+                notificationService.send(requester, project, NotificationType.GOODS_RECEIVED,
+                        "Goods received", body, "/projects/" + project.getId());
+            }
+        }
     }
 
     private BigDecimal balance(int projectId, int materialId) {

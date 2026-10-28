@@ -1,6 +1,7 @@
 import { HardHat, ShieldCheck, Wallet } from 'lucide-react'
 import Logo from './Logo'
 import LanguageToggle from './LanguageToggle'
+import LegalLinks from './LegalLinks'
 import { useT } from '../i18n/LanguageContext'
 
 export default function AuthShell({ title, subtitle, children, footer }) {
@@ -42,6 +43,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           {subtitle && <p className="mt-1.5 text-sm text-ink-500">{subtitle}</p>}
           <div className="mt-6">{children}</div>
           {footer && <div className="mt-6 text-center text-sm text-ink-600">{footer}</div>}
+          <div className="mt-8 flex justify-center"><LegalLinks /></div>
         </div>
       </div>
     </div>

@@ -2,11 +2,13 @@ package com.construction.construction_management.service.impl;
 
 import com.construction.construction_management.dto.PaymentRequest;
 import com.construction.construction_management.dto.PaymentResponse;
+import com.construction.construction_management.entity.NotificationType;
 import com.construction.construction_management.entity.Payment;
 import com.construction.construction_management.entity.Project;
 import com.construction.construction_management.repository.PaymentRepository;
 import com.construction.construction_management.service.AccessGuard;
 import com.construction.construction_management.service.AuditService;
+import com.construction.construction_management.service.NotificationService;
 import com.construction.construction_management.service.PaymentService;
 import org.springframework.stereotype.Service;
 import com.construction.construction_management.util.Money;
@@ -19,12 +21,14 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final AccessGuard guard;
     private final AuditService auditService;
+    private final NotificationService notificationService;
 
     public PaymentServiceImpl(PaymentRepository paymentRepository, AccessGuard guard,
-                              AuditService auditService) {
+                              AuditService auditService, NotificationService notificationService) {
         this.paymentRepository = paymentRepository;
         this.guard = guard;
         this.auditService = auditService;
+        this.notificationService = notificationService;
     }
 
     private PaymentResponse toResponse(Payment p) {
@@ -51,6 +55,10 @@ public class PaymentServiceImpl implements PaymentService {
         Payment saved = paymentRepository.save(p);
         auditService.record("PAYMENT_RECORDED", "Payment", saved.getId(),
                 "projectId=" + projectId + "; amount=" + saved.getAmount() + "; mode=" + saved.getMode());
+        notificationService.send(project.getContractor(), project, NotificationType.PAYMENT_RECORDED,
+                "Payment received",
+                "INR " + saved.getAmount().toPlainString() + " was recorded for " + project.getTitle(),
+                "/projects/" + projectId);
         return toResponse(saved);
     }
 

@@ -10,6 +10,7 @@ import com.construction.construction_management.entity.IssueCategory;
 import com.construction.construction_management.entity.IssueComment;
 import com.construction.construction_management.entity.IssuePhoto;
 import com.construction.construction_management.entity.IssueStatus;
+import com.construction.construction_management.entity.NotificationType;
 import com.construction.construction_management.entity.Project;
 import com.construction.construction_management.entity.ProjectIssue;
 import com.construction.construction_management.entity.RoleName;
@@ -21,6 +22,7 @@ import com.construction.construction_management.repository.UserRepository;
 import com.construction.construction_management.security.CurrentUser;
 import com.construction.construction_management.service.AccessGuard;
 import com.construction.construction_management.service.AuditService;
+import com.construction.construction_management.service.NotificationService;
 import com.construction.construction_management.service.SiteIssueService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,17 +41,20 @@ public class SiteIssueServiceImpl implements SiteIssueService {
     private final CurrentUser currentUser;
     private final AccessGuard guard;
     private final AuditService auditService;
+    private final NotificationService notificationService;
 
     public SiteIssueServiceImpl(ProjectIssueRepository issueRepository,
                                 UserRepository userRepository,
                                 CurrentUser currentUser,
                                 AccessGuard guard,
-                                AuditService auditService) {
+                                AuditService auditService,
+                                NotificationService notificationService) {
         this.issueRepository = issueRepository;
         this.userRepository = userRepository;
         this.currentUser = currentUser;
         this.guard = guard;
         this.auditService = auditService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -84,6 +89,7 @@ public class SiteIssueServiceImpl implements SiteIssueService {
         ProjectIssue saved = issueRepository.save(issue);
         auditService.record("ISSUE_CREATED", "ProjectIssue", saved.getId(),
                 "projectId=" + projectId + "; category=" + saved.getCategory());
+        notifyAssignee(saved);
         return IssueResponse.from(saved);
     }
 
@@ -99,6 +105,7 @@ public class SiteIssueServiceImpl implements SiteIssueService {
         if (!manager && issue.getStatus() == IssueStatus.RESOLVED) {
             throw new BadRequestException("Resolved issues can only be changed by the contractor");
         }
+        Integer previousAssignee = issue.getAssignee() == null ? null : issue.getAssignee().getId();
         apply(project, issue, request);
         if (issue.getAssignee() != null && issue.getStatus() == IssueStatus.OPEN) {
             issue.setStatus(IssueStatus.ASSIGNED);
@@ -107,6 +114,10 @@ public class SiteIssueServiceImpl implements SiteIssueService {
         ProjectIssue saved = issueRepository.save(issue);
         auditService.record("ISSUE_UPDATED", "ProjectIssue", saved.getId(),
                 "projectId=" + projectId);
+        if (saved.getAssignee() != null
+                && (previousAssignee == null || previousAssignee != saved.getAssignee().getId())) {
+            notifyAssignee(saved);
+        }
         return IssueResponse.from(saved);
     }
 
@@ -159,6 +170,17 @@ public class SiteIssueServiceImpl implements SiteIssueService {
         issue.setUpdatedAt(LocalDateTime.now());
         issueRepository.save(issue);
         auditService.record("ISSUE_COMMENTED", "ProjectIssue", issueId, "projectId=" + projectId);
+        String message = currentUser.get().getName() + " commented on " + issue.getTitle()
+                + ": " + comment.getMessage();
+        notificationService.send(issue.getRaisedBy(), issue.getProject(),
+                NotificationType.ISSUE_COMMENTED, "New issue comment", message,
+                "/projects/" + projectId);
+        if (issue.getAssignee() != null
+                && issue.getRaisedBy().getId() != issue.getAssignee().getId()) {
+            notificationService.send(issue.getAssignee(), issue.getProject(),
+                    NotificationType.ISSUE_COMMENTED, "New issue comment", message,
+                    "/projects/" + projectId);
+        }
         return IssueCommentResponse.from(comment);
     }
 
@@ -177,6 +199,16 @@ public class SiteIssueServiceImpl implements SiteIssueService {
         guard.projectForSiteRead(projectId);
         return issueRepository.findByIdAndProjectId(issueId, projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found"));
+    }
+
+    private void notifyAssignee(ProjectIssue issue) {
+        if (issue.getAssignee() == null) {
+            return;
+        }
+        notificationService.send(issue.getAssignee(), issue.getProject(), NotificationType.ISSUE_ASSIGNED,
+                "Issue assigned",
+                issue.getTitle() + (issue.getDueDate() == null ? "" : " · due " + issue.getDueDate()),
+                "/projects/" + issue.getProject().getId());
     }
 
     private boolean isManager() {

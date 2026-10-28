@@ -4,7 +4,7 @@ import com.construction.construction_management.dto.UserResponse;
 import com.construction.construction_management.util.Pages;
 import com.construction.construction_management.service.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation;
 
 import java.util.List;
 
@@ -32,6 +32,7 @@ public class UserController {
         return userService.getAllUsers(Pages.of(page, size));
     }
 
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
     @GetMapping("/{id}")
     public UserResponse getUserById(@PathVariable int id) {
         return userService.getUserById(id);

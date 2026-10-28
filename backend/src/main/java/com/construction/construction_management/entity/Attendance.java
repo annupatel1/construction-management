@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Entity
+@UniqueConstraint(columnNames = {"labourAssignment_id", "date"}, name = "uk_attendance_labour_date")
 public class Attendance {
 
     @Id

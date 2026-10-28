@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class LabourAssignmentResponse {
     int id;
-    UserResponse labour;
+    DirectoryUserResponse labour;
     ProjectResponse project;
     BigDecimal dailyRate;
     String status;
@@ -23,7 +23,7 @@ public class LabourAssignmentResponse {
     public static LabourAssignmentResponse from(LabourAssignment a) {
         return new LabourAssignmentResponse(
                 a.getId(),
-                UserResponse.from(a.getLabour()),
+                DirectoryUserResponse.from(a.getLabour()),
                 ProjectResponse.from(a.getProject()),
                 a.getDailyRate(),
                 a.getStatus().toString(),

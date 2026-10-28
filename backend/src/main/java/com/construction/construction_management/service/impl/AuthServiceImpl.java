@@ -104,8 +104,20 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public OtpSentResponse register(RegisterRequest request) {
-        if (request.getRoleName() == RoleName.ADMIN) {
-            throw new BadRequestException("Invalid role selected");
+        // P0: only HOUSE_OWNER, CONTRACTOR, LABOUR may register publicly;
+        // ADMIN must be provisioned by a controlled process (e.g., script / admin UI)
+        String roleName = request.getRoleName();
+        if (roleName == null) {
+            throw new BadRequestException("Role is required");
+        }
+        if (roleName.equals(RoleName.ADMIN.name())) {
+            throw new BadRequestException("Admin role cannot be selected during public registration");
+        }
+        // optionally, restrict to the three allowed roles:
+        if (!roleName.equals(RoleName.HOUSE_OWNER.name())
+                && !roleName.equals(RoleName.CONTRACTOR.name())
+                && !roleName.equals(RoleName.LABOUR.name())) {
+            throw new BadRequestException("Invalid role selected. Allowed: HOUSE_OWNER, CONTRACTOR, LABOUR");
         }
         Identifier phone = Identifier.phone(request.getPhone());
 

@@ -15,6 +15,7 @@ import com.construction.construction_management.security.CurrentUser;
 import com.construction.construction_management.service.AccessGuard;
 import com.construction.construction_management.service.AuditService;
 import com.construction.construction_management.service.EngineerInvitationService;
+import com.construction.construction_management.service.NotificationService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
     private final CurrentUser currentUser;
     private final AccessGuard guard;
     private final AuditService auditService;
+    private final NotificationService notificationService;
 
     public EngineerInvitationServiceImpl(EngineerInvitationRepository invitationRepository,
                                          EngineerProfileRepository profileRepository,
@@ -41,7 +43,8 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
                                          UserRepository userRepository,
                                          CurrentUser currentUser,
                                          AccessGuard guard,
-                                         AuditService auditService) {
+                                         AuditService auditService,
+                                         NotificationService notificationService) {
         this.invitationRepository = invitationRepository;
         this.profileRepository = profileRepository;
         this.membershipRepository = membershipRepository;
@@ -49,6 +52,7 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
         this.currentUser = currentUser;
         this.guard = guard;
         this.auditService = auditService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -108,6 +112,10 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
         EngineerInvitation saved = invitationRepository.save(invitation);
         auditService.record("ENGINEER_INVITED", "EngineerInvitation", saved.getId(),
                 "projectId=" + projectId + "; engineerId=" + engineer.getId());
+        notificationService.send(engineer, project, NotificationType.ENGINEER_INVITED,
+                "New project invitation",
+                inviter.getName() + " invited you to " + project.getTitle(),
+                "/invitations");
         return EngineerInvitationResponse.from(saved);
     }
 
@@ -168,6 +176,12 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
         auditService.record("ENGINEER_INVITATION_ACCEPTED", "EngineerInvitation", invitation.getId(),
                 "projectId=" + invitation.getProject().getId()
                         + "; membershipId=" + savedMembership.getId());
+        notificationService.send(invitation.getInviter(), invitation.getProject(),
+                NotificationType.INVITATION_ACCEPTED,
+                "Invitation accepted",
+                invitation.getEngineer().getName() + " accepted your invitation to "
+                        + invitation.getProject().getTitle(),
+                "/projects/" + invitation.getProject().getId());
         return EngineerInvitationResponse.from(invitation);
     }
 
@@ -186,6 +200,12 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
         EngineerInvitation saved = invitationRepository.save(invitation);
         auditService.record("ENGINEER_INVITATION_DECLINED", "EngineerInvitation", saved.getId(),
                 "projectId=" + invitation.getProject().getId());
+        notificationService.send(invitation.getInviter(), invitation.getProject(),
+                NotificationType.INVITATION_DECLINED,
+                "Invitation declined",
+                invitation.getEngineer().getName() + " declined your invitation to "
+                        + invitation.getProject().getTitle(),
+                "/projects/" + invitation.getProject().getId());
         return EngineerInvitationResponse.from(saved);
     }
 
@@ -203,6 +223,11 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
         EngineerInvitation saved = invitationRepository.save(invitation);
         auditService.record("ENGINEER_INVITATION_CANCELLED", "EngineerInvitation", saved.getId(),
                 "projectId=" + invitation.getProject().getId());
+        notificationService.send(invitation.getEngineer(), invitation.getProject(),
+                NotificationType.INVITATION_CANCELLED,
+                "Invitation cancelled",
+                "The invitation to " + invitation.getProject().getTitle() + " was cancelled",
+                "/invitations");
         return EngineerInvitationResponse.from(saved);
     }
 
@@ -246,6 +271,11 @@ public class EngineerInvitationServiceImpl implements EngineerInvitationService 
         membershipRepository.save(membership);
         auditService.record("ENGINEER_REMOVED_FROM_PROJECT", "ProjectMembership", membershipId,
                 "projectId=" + projectId + "; userId=" + membership.getUser().getId());
+        notificationService.send(membership.getUser(), membership.getProject(),
+                NotificationType.ENGINEER_REMOVED,
+                "Removed from project",
+                "You no longer have site access to " + membership.getProject().getTitle(),
+                "/projects");
     }
 
     private EngineerInvitation load(int invitationId) {

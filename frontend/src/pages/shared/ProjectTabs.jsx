@@ -9,6 +9,7 @@ import { formatDate, formatINR, formatNumber, todayISO } from '../../lib/format'
 import { sum } from '../../lib/calc'
 import StatusBadge from '../../components/Status'
 import AssignLabourModal from '../../components/AssignLabourModal'
+import ExportButton from '../../components/ExportButton'
 import { Alert, Badge, Button, Card, EmptyState, Input, Modal, Progress, Select, Textarea } from '../../components/ui'
 
 /* =========================== LABOUR =========================== */
@@ -16,12 +17,19 @@ export function LabourTab({ project, assignments, role, onChange }) {
   const { t } = useT()
   const [open, setOpen] = useState(false)
   const canAssign = role === 'CONTRACTOR'
+  const canExport = role === 'CONTRACTOR' || role === 'ADMIN'
 
   return (
     <div className="space-y-4">
-      {canAssign && (
-        <div className="flex justify-end">
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> {t('Assign labour')}</Button>
+      {(canAssign || canExport) && (
+        <div className="flex flex-wrap justify-end gap-2">
+          {canExport && (
+            <ExportButton path={`/api/projects/${project.id}/exports/attendance.csv`}
+              label="Export attendance" />
+          )}
+          {canAssign && (
+            <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> {t('Assign labour')}</Button>
+          )}
         </div>
       )}
       {assignments.length === 0 ? (
@@ -68,7 +76,10 @@ export function ExpensesTab({ project, expenses, role, onChange }) {
           <p className="text-xs uppercase tracking-wide text-ink-500">{t('Total material expenses')}</p>
           <p className="text-2xl font-semibold text-ink-900">{formatINR(total)}</p>
         </div>
-        {canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> {t('Add expense')}</Button>}
+        <div className="flex flex-wrap justify-end gap-2">
+          <ExportButton path={`/api/projects/${project.id}/exports/finance.csv`} label="Export finance" />
+          {canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> {t('Add expense')}</Button>}
+        </div>
       </div>
 
       {project.contractType === 'LABOUR_ONLY' && (
@@ -158,11 +169,10 @@ export function PaymentsTab({ project, payments, fin, role, onChange }) {
         <Progress value={fin.estimated ? (fin.received / fin.estimated) * 100 : 0} />
       </Card>
 
-      {canAdd && (
-        <div className="flex justify-end">
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> {t('Record payment')}</Button>
-        </div>
-      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <ExportButton path={`/api/projects/${project.id}/exports/finance.csv`} label="Export finance" />
+        {canAdd && <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> {t('Record payment')}</Button>}
+      </div>
 
       {payments.length === 0 ? (
         <EmptyState icon={Wallet} title={t('No payments yet')} text={canAdd ? t('Record each payment you make to the contractor.') : undefined} />

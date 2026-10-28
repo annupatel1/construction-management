@@ -13,6 +13,7 @@ import ProjectDetail from './pages/shared/ProjectDetail'
 import AssignmentDetail from './pages/shared/AssignmentDetail'
 import Requirements from './pages/shared/Requirements'
 import Profile from './pages/shared/Profile'
+import AIIntelligence from './pages/shared/AIIntelligence'
 import { Contractors, Labourers } from './pages/shared/Directory'
 import NewProject from './pages/owner/NewProject'
 import NewRequirement from './pages/owner/NewRequirement'
@@ -24,10 +25,16 @@ import EngineerPublicProfile from './pages/engineer/EngineerPublicProfile'
 import EngineerProfile from './pages/engineer/EngineerProfile'
 import Invitations from './pages/engineer/Invitations'
 import InviteEngineer from './pages/owner/InviteEngineer'
+import { PrivacyPolicy, Support, TermsOfUse } from './pages/legal/LegalPages'
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfUse />} />
+      <Route path="/support" element={<Support />} />
+      <Route path="/ai" element={<AIIntelligence />} />
+
       <Route element={<PublicOnly />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -38,6 +45,7 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/ai-intelligence" element={<AIIntelligence />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:id" element={<ProjectDetail />} />

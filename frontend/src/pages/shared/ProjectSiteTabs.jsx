@@ -10,6 +10,7 @@ import { useT } from '../../i18n/LanguageContext'
 import { LABELS, options } from '../../lib/labels'
 import { formatDate, formatDateTime, todayISO } from '../../lib/format'
 import StatusBadge from '../../components/Status'
+import ExportButton from '../../components/ExportButton'
 import { Alert, Button, Card, EmptyState, Input, Modal, Progress, Select, Textarea } from '../../components/ui'
 
 const canManageSite = (role) => role === 'CONTRACTOR' || role === 'ADMIN'
@@ -178,11 +179,12 @@ export function ProgressTab({ project, reports = [], role, onChange }) {
 
   return (
     <div className="space-y-4">
-      {canAuthor && (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <ExportButton path={`/api/projects/${project.id}/exports/site.csv`} label="Export site report" />
+        {canAuthor && (
           <Button onClick={showNew}><Plus className="h-4 w-4" /> {t('New daily report')}</Button>
-        </div>
-      )}
+        )}
+      </div>
       {reports.length === 0 ? (
         <EmptyState icon={ClipboardList} title={t('No progress reports yet')}
           text={canAuthor ? t('Record what was planned and completed on site today.')
