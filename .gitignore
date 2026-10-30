@@ -1,17 +1,19 @@
-# Python/Gradle/Maven
+# Java/Maven/Gradle build outputs
+/target/
+/.build/
+
+# IDE files
 /.idea/
 /*.iml
-/target/
-/build/
-/*.recover/
 
 # Environment variables - NEVER commit these!
 .env
 *.env.local
 
-# Logs and temp
+# Logs
 *.log
 /tmp/
 
-# JWT Secrets and DB Credentials (git global ignore too)
-# Add to global gitconfig: git config --global core.excludesfile ~/.gitignore_global
+# JAR/WAR archives
+*.jar
+*.war

@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+
+  /* Charcoal neutrals */
+  --color-ink-50: #f6f7f8;
+  --color-ink-100: #eceff0;
+  --color-ink-200: #dce0e2;
+  --color-ink-300: #b9c0c4;
+  --color-ink-400: #8d979c;
+  --color-ink-500: #6a7479;
+  --color-ink-600: #4f585d;
+  --color-ink-700: #3a4146;
+  --color-ink-800: #2a3034;
+  --color-ink-900: #1e2326;
+
+  /* Teal accent */
+  --color-brand-50: #eaf7f6;
+  --color-brand-100: #cdeceb;
+  --color-brand-200: #9fdad7;
+  --color-brand-300: #6cc3be;
+  --color-brand-400: #3aa8a2;
+  --color-brand-500: #1f918b;
+  --color-brand-600: #138680;
+  --color-brand-700: #0f6b66;
+  --color-brand-800: #0d5450;
+  --color-brand-900: #0b3f3c;
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--color-ink-50);
+  color: var(--color-ink-800);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* number inputs: hide spinners, they are awkward on phones */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
+
+@keyframes slide-up { from { transform: translateY(12px); opacity: 0 } to { transform: none; opacity: 1 } }
+.animate-slide-up { animation: slide-up .18s ease-out; }

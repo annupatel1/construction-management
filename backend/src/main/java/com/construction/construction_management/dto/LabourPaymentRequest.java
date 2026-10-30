@@ -1,0 +1,26 @@
+package com.construction.construction_management.dto;
+
+import com.construction.construction_management.entity.LabourPaymentType;
+import com.construction.construction_management.entity.PaymentMode;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+@Getter
+@Setter
+public class LabourPaymentRequest {
+    @Positive(message = "Amount must be greater than 0")
+    @NotNull(message = "amount is required")
+    BigDecimal amount;
+    @NotNull(message = "Payment date is required")
+    LocalDate paymentDate;
+    @NotNull(message = "Payment mode is required")
+    PaymentMode mode;
+    /** Optional; defaults to WAGE. Use ADVANCE when giving money in advance. */
+    LabourPaymentType type;
+    String remarks;
+}
