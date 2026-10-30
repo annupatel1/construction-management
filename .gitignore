@@ -1,7 +1,17 @@
-target/
-.idea/
-*.iml
-.mvn/
-!.mvn/wrapper/maven-wrapper.jar
-.DS_Store
+# Python/Gradle/Maven
+/.idea/
+/*.iml
+/target/
+/build/
+/*.recover/
+
+# Environment variables - NEVER commit these!
+.env
+*.env.local
+
+# Logs and temp
 *.log
+/tmp/
+
+# JWT Secrets and DB Credentials (git global ignore too)
+# Add to global gitconfig: git config --global core.excludesfile ~/.gitignore_global
