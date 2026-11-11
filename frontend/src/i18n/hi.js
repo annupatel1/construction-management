@@ -564,4 +564,16 @@ export default {
   "Export finance": "वित्त निर्यात करें",
   "Export stock ledger": "स्टॉक लेजर निर्यात करें",
   "Export site report": "साइट रिपोर्ट निर्यात करें",
+
+  // 2026 auth + registration polish
+  "I supervise construction work": "मैं निर्माण कार्य की निगरानी करता हूँ",
+  "Email address is required": "ईमेल पता आवश्यक है",
+  "We sent a verification code to your email.": "हमने आपके ईमेल पर सत्यापन कोड भेजा है।",
+  "Your primary login and communication email": "आपका मुख्य लॉगिन और संपर्क ईमेल",
+  "We will email you a 6-digit code to verify your account.": "हम आपका खाता सत्यापित करने के लिए ईमेल पर 6 अंकों का कोड भेजेंगे।",
+  "Need to make changes? Go back": "बदलाव करना है? वापस जाएँ",
+  "Account verified. Welcome!": "खाता सत्यापित हो गया। स्वागत है!",
+  "Create Account": "खाता बनाएँ",
+  "Verify your email": "अपना ईमेल सत्यापित करें",
+  "Dev mode: the code is printed in the backend console.": "डेव मोड: कोड बैकएंड कंसोल में छपता है।",
 }

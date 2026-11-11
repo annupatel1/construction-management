@@ -44,3 +44,46 @@ jobs:
         run: |
           npm ci
           npm run build
+
+  ai-platform:
+    name: AI Platform (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ai_platform/requirements-api.txt
+
+      - name: Install API dependencies
+        working-directory: ai_platform
+        run: pip install -r requirements-api.txt
+
+      - name: Run tests
+        working-directory: ai_platform
+        run: python test_suite.py
+
+  docker:
+    name: Docker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Validate Compose file
+        run: docker compose config --quiet
+
+      - name: Build backend image
+        run: docker build -t buildtrack-backend:ci ./backend
+
+      - name: Build frontend image
+        run: docker build -t buildtrack-frontend:ci ./frontend
+
+      - name: Build AI image
+        run: docker build -t buildtrack-ai:ci ./ai_platform

@@ -1,179 +1,220 @@
-<<<<<<< HEAD
-# Construction Site Management System
+# BuildTrack — Construction Management Platform
 
-A full-stack Spring Boot backend for a construction marketplace connecting House Owners, Contractors, and Labourers — built with role-based access control, JWT authentication, and a proper layered architecture.
+A production-oriented, full-stack construction management platform for **House Owners, Contractors, Labour, and Engineers**. It combines day-to-day site operations (labour, attendance, wages, materials, procurement, progress, issues) with a multimodal **AI Intelligence** service for safety audits, crack diagnostics, INR project valuation, and weather-aware advisories.
 
-## Overview
+---
 
-This platform models a real-world construction workflow:
-- **House Owners** post project requirements or hire contractors directly, and track payments made.
-- **Contractors** browse/take up projects, assign labourers, mark daily attendance, log material expenses, and pay wages.
-- **Labourers** get assigned to projects with a daily rate, tracked attendance, and advance/wage payments.
+## What is inside
 
-The system supports two contract types — **Labour Only** (owner supplies material) and **Labour + Material** (contractor supplies material) — which affects how project costs and profit are calculated.
+| Module | Description | Stack |
+| --- | --- | --- |
+| [`backend/`](backend/) | REST API, JWT auth, role-based access, business rules | Java 21 · Spring Boot 4.1 · Spring Security · JPA · Flyway · MySQL |
+| [`frontend/`](frontend/) | Mobile-first web app (Hindi / English) | React 19 · Vite 8 · Tailwind CSS 4 |
+| [`ai_platform/`](ai_platform/) | Multimodal AI service + Streamlit console | Python 3.12 · FastAPI · Google Gemini |
 
-## Tech Stack
+---
 
-- **Java 21**, **Spring Boot 4.1.1**
-- **Spring Security** with **JWT** authentication (stateless, BCrypt password hashing)
-- **Spring Data JPA** + **Hibernate** (MySQL)
-- **Role-based access control** via `@PreAuthorize`
-- **Maven** for build management
-- **Lombok** for boilerplate reduction
+## Feature highlights
+
+**House owners**
+- Post requirements, hire contractors, create and track projects
+- Record payments and export finance reports
+
+**Contractors**
+- Manage sites, assign labour, mark attendance, and pay wages
+- Raise material requests, create purchase orders, receive goods, and track stock
+- Publish daily progress reports, tasks, milestones, and site issues
+
+**Labour**
+- See assigned sites, attendance, and wage balance (read-only finance)
+
+**Engineers**
+- Publish a professional profile and get discovered
+- Accept scoped project invitations with site access, without financial visibility
+
+**Platform**
+- JWT authentication, OTP verification, account suspension, and token revocation
+- Audit trail for financial and status changes
+- In-app notifications, CSV exports, health probe, and request-id correlation
+- Deterministic demo fallback for every AI feature when no Gemini key is configured
+
+---
 
 ## Architecture
 
-The project follows a standard layered architecture:
-=======
-# BuildTrack — Construction Site Management
+```
+Browser (React + Vite)
+   │  JWT
+   ▼
+Spring Boot API :8080 ──────► MySQL 8 (Flyway migrations)
+   │
+   │  optional AI calls
+   ▼
+FastAPI AI service :8000 ───► Google Gemini (or deterministic demo mode)
+```
 
-A full-stack construction marketplace connecting **House Owners**, **Contractors**, **Labourers**, and **Engineers**.
+- The backend owns all authorization and money math (`BigDecimal` / `DECIMAL`).
+- The AI service is stateless and never stores project data.
+- The frontend is a static SPA; API base URLs are configured at build time.
 
-This repository contains both applications:
+---
 
-| Folder | Description | Stack |
-| --- | --- | --- |
-| [`frontend/`](frontend/) | Web app (mobile-first, Hindi/English) | React, Vite, Tailwind CSS |
-| [`backend/`](backend/) | REST API with JWT auth and role-based access | Java 21, Spring Boot, Spring Security, JPA, MySQL |
+## Quick start with Docker
 
-## Features
+```bash
+cd construction-management
+chmod +x scripts/generate-env.sh
+./scripts/generate-env.sh   # writes .env with strong secrets
+docker compose up -d --build
+```
 
-- House owners post requirements, hire contractors, start projects, and track payments.
-- Contractors manage projects, assign labour, mark attendance, request and procure materials, track stock,
-  and pay wages.
-- Labourers see assigned sites, attendance, and wage balances.
-- Engineers publish a professional profile, get discovered by owners/contractors, and join projects through invitations with scoped site access.
-- Material requests, purchase orders, goods receipts, a traceable stock ledger, and low-stock warnings.
-- In-app notifications for invitations, payments, tasks, site issues, material requests, and receipts.
-- Role-scoped CSV exports for finance, attendance, stock, and site records.
-- Public privacy, terms, and support pages with a pilot runbook for backups, retention, and incidents.
-- Health/readiness probe (`GET /api/health`) and request-id correlation on every API response.
-- Two contract types: **Labour Only** and **Labour + Material**.
-- JWT authentication, OTP verification, and role-based access control.
+| Service | URL |
+| --- | --- |
+| Web app | http://localhost:3000 |
+| REST API | http://localhost:8080 |
+| API health | http://localhost:8080/api/health |
+| AI service docs | http://localhost:8000/docs |
 
-## Getting started
+> Compose uses `GEMINI_API_KEY` for live AI. Without it, every AI feature returns a clearly labelled demonstration result, so the UI remains fully usable. See the full [Docker guide](docs/DOCKER.md) for production, Podman, backups, and troubleshooting.
 
-### Backend
+---
 
-Requirements: Java 21, Maven, MySQL.
+## Manual development setup
+
+### 1. Backend
+
+Requirements: **Java 21**, Maven, MySQL 8.
 
 ```bash
 cd backend
+export DB_URL="jdbc:mysql://localhost:3306/construction_management_db"
+export DB_USERNAME=root
+export DB_PASSWORD=root
 ./mvnw spring-boot:run
 ```
 
-The API runs at `http://localhost:8080`. Configure the database and secrets through the
-environment variables described in [`backend/src/main/resources/application.properties`](backend/src/main/resources/application.properties).
+Flyway creates or upgrades the schema automatically. In development, OTP codes are printed in the backend log (`OTP_PHONE_DELIVERY=CONSOLE`, `OTP_EMAIL_DELIVERY=CONSOLE`).
 
-### Frontend
+### 2. Frontend
 
-Requirements: Node 20.19+ or 22+.
+Requirements: **Node 20.19+ or 22+**.
 
 ```bash
 cd frontend
-npm install
+cp .env.example .env
+npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. Copy `.env.example` to `.env` if you need to change `VITE_API_URL`
-(defaults to `http://localhost:8080`) or set the public `VITE_SUPPORT_EMAIL` shown on the legal pages.
+Open http://localhost:5173.
+
+### 3. AI platform
+
+```bash
+cd ai_platform
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+uvicorn backend_api:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Optional Streamlit console:
+
+```bash
+streamlit run app.py --server.port 8501
+```
+
+---
+
+## Configuration
+
+Copy [`.env.example`](.env.example) and set real values before deploying.
+
+### Backend
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | yes | MySQL connection |
+| `JWT_SECRET` | yes | 32+ random characters; signs access tokens |
+| `OTP_SECRET` | yes | HMAC key for OTP hashes (independent of JWT) |
+| `CORS_ORIGINS` | yes | Comma-separated frontend origins |
+| `OTP_PHONE_DELIVERY` | yes | `SMS` (MSG91) in production |
+| `OTP_EMAIL_DELIVERY` | yes | `EMAIL` (SMTP) in production |
+| `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | for SMS | MSG91 DLT-approved template |
+| `SPRING_MAIL_*`, `MAIL_FROM` | for email | SMTP credentials |
+| `PORT` | no | Defaults to `8080` |
+
+Run production with `SPRING_PROFILES_ACTIVE=prod`. The app refuses to start with development defaults, console OTP delivery, or short secrets.
+
+### Frontend
+
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_URL` | Spring Boot API base URL |
+| `VITE_AI_URL` | FastAPI AI base URL |
+| `VITE_AI_API_KEY` | Optional shared key for the AI service |
+| `VITE_SUPPORT_EMAIL` | Support inbox shown on legal pages |
+
+### AI service
+
+| Variable | Purpose |
+| --- | --- |
+| `GEMINI_API_KEY` | Google AI key; omit to run in demo mode |
+| `GEMINI_MODEL` | Model name (default `gemini-3.6-flash`) |
+| `AI_ALLOWED_ORIGINS` | Comma-separated browser origins |
+| `AI_API_KEY` | Optional shared key required on AI routes |
+
+---
+
+## Testing
+
+```bash
+# Backend: 28 integration/unit tests on H2 with real Flyway migrations
+cd backend && mvn verify
+
+# Frontend: production build
+cd frontend && npm ci && npm run build
+
+# AI platform: unittest + FastAPI TestClient
+cd ai_platform && python test_suite.py
+```
+
+CI runs all three on every push and pull request (`.github/workflows/ci.yml`).
+
+---
 
 ## Database migrations
 
-The backend schema is owned by Flyway (`spring.jpa.hibernate.ddl-auto=none`):
+The schema is owned by Flyway (`spring.jpa.hibernate.ddl-auto=none`):
 
-- A fresh database runs `backend/src/main/resources/db/migration/common/V1__baseline.sql` plus the
-  vendor migrations for MySQL or H2.
-- A database created by the older `ddl-auto=update` setup is baselined at `V1`, then upgraded by the
-  vendor migrations (`V2` gate-0 hardening, `V3` audit events, `V4` engineer marketplace,
-  `V5` site execution, `V6` materials and procurement, `V7` notifications).
-- Automated tests run the same migrations against in-memory H2 in MySQL mode. No Docker or MySQL is
-  required for `mvn test`.
+- `db/migration/common/` — baseline, audit, engineer marketplace, site execution, materials, notifications
+- `db/migration/mysql/` — production upgrades
+- `db/migration/h2/` — the same upgrades for the in-memory test database
 
-## Security and data integrity
+Fresh databases run `V1` plus vendor migrations. Existing databases are baselined at `V1` and upgraded from `V2`.
 
-Gate 0 hardening is in place:
+---
 
-- `BigDecimal` / `DECIMAL` money and quantity columns with shared half-up rounding.
-- Per-account token versions; logout, password reset, and suspension revoke old JWTs.
-- Account status (`ACTIVE`, `SUSPENDED`, `DELETED`) enforced at login and on every request.
-- Password-login throttling, HMAC-hashed single-use OTPs, and OTP rate limits.
-- Unique attendance per labour assignment and date.
-- PII-minimised public payloads (no email/login data), Aadhaar fields removed.
-- Admin-only audit trail for financial and status changes.
-- Bounded list endpoints (default 50, maximum 100 per page).
-- Production profile fails fast on weak secrets or console OTP delivery.
+## Security notes
 
-Gate 2 engineer marketplace is in place:
+- Passwords are BCrypt-hashed; access tokens are stateless JWTs with per-account token versions.
+- Logout, password reset, and suspension revoke all existing tokens.
+- OTPs are single-use, HMAC-hashed, rate-limited, and never stored in plain text.
+- `AccessGuard` enforces project ownership and role scope on every service call.
+- CSV exports neutralise spreadsheet formula injection.
+- The production profile fails fast on weak secrets or console OTP delivery.
 
-- Engineer profiles with skills, specialty, experience, service area, languages, availability, portfolio,
-  and credential-review state.
-- Searchable engineer directory with public contact details kept private.
-- Owner/contractor invitations with scope, dates, fee terms, and a response deadline.
-- Accept/decline/cancel workflow; only acceptance creates a project membership.
-- Accepted engineers get scoped project access; finance, wage, and team-management endpoints stay closed.
-- Invitation and membership changes are audited.
-
-Gate 3 site execution is in place:
-
-- Daily progress reports with planned/completed work, blockers, next-day plan, dated photo links, and a
-  draft → submitted → published workflow. Owners see published reports only.
-- Tasks with assignees, due dates, milestones, delay reasons, and overdue tracking.
-- Milestones with target/completed dates and task completion progress.
-- Quality/safety/delay issues with photo evidence, assignee, due date, comments, and resolution evidence.
-- Site records are scoped to the owner, contractor, admin, and accepted engineer members. Labour cannot
-  read site execution records, and financial data stays hidden from engineers.
-- Progress report lists are paginated; task, milestone, and issue lists are bounded and support
-  `page`/`size`.
-
-Gate 4 materials and procurement is in place:
-
-- Project material catalog with category, unit, minimum-stock threshold, and a stock balance derived
-  from movements rather than an editable number.
-- Material requests with requester, needed-by date, contractor/admin approval or rejection, and
-  cancellation by the requester or contractor.
-- Suppliers and purchase orders; approved requests can be converted into orders without re-typing.
-- Partial or full goods receipts. Each receipt posts a stock-in movement and creates a material expense,
-  so project finance and stock stay aligned.
-- Manual issue, return, and wastage movements with negative-stock protection. Stock, requests,
-  movements, and low-stock counts are visible to the project team; purchase prices and supplier details
-  stay owner/contractor/admin-only.
-
-Gate 5 pilot hardening is in place:
-
-- Personal in-app notifications with an unread badge, mark-one-read, and mark-all-read. Invitations,
-  contractor payments, assigned tasks, site issues/comments, material requests/reviews, and goods
-  receipts notify the right person without notifying the actor who triggered them.
-- CSV exports for finance (owner/contractor/admin), attendance (contractor/admin), stock
-  (owner/contractor/admin), and site operations (owner/contractor/engineer/admin), with project metadata,
-  totals, UTF-8 BOM for Excel, and formula-injection protection. Engineer finance/wage/supplier data
-  remains hidden.
-- Public `/privacy`, `/terms`, and `/support` pages, linked from the app footer and auth screen.
-- `GET /api/health` is a public liveness/readiness probe with a database check.
-- Every response carries `X-Request-Id`; API errors include the same `requestId`, and it appears in the
-  server log pattern so support can trace a user report.
-- The pilot runbook covers staging smoke tests, money reconciliation, backup/restore, retention,
-  incident response, rollback, and go/no-go review: [`docs/PILOT_RUNBOOK.md`](docs/PILOT_RUNBOOK.md).
-
-## Tests and CI
-
-```bash
-cd backend && mvn verify
-cd frontend && npm ci && npm run build
-```
-
-GitHub Actions runs both commands on pushes to `main` and on pull requests
-(`.github/workflows/ci.yml`).
-
-## Production
-
-Run the backend with `SPRING_PROFILES_ACTIVE=prod` and set the environment variables listed in
-[`backend/README.md`](backend/README.md#production-profile). Console OTP delivery is rejected in the
-production profile.
+---
 
 ## Documentation
 
-- Frontend usage and role walkthrough: [`frontend/README.md`](frontend/README.md)
-- Backend architecture, migrations, testing, and production setup: [`backend/README.md`](backend/README.md)
-- Pilot operations, backups, retention, and incident response: [`docs/PILOT_RUNBOOK.md`](docs/PILOT_RUNBOOK.md)
->>>>>>> ca0eb9f7b99b083b58e3bf61600c44c2cfddb0d4
+- [Backend guide](backend/README.md)
+- [Frontend guide](frontend/README.md)
+- [AI platform guide](ai_platform/README.md)
+- [Docker deployment guide](docs/DOCKER.md)
+- [Pilot runbook](docs/PILOT_RUNBOOK.md)
+
+---
+
+## License
+
+Proprietary. All rights reserved unless a separate licence is agreed in writing.

@@ -24,43 +24,65 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const [left, restart] = useCountdown(0)
 
-  const switchMode = (m) => { setMode(m); setError(''); setOtpStep(false); setOtp('') }
+  const switchMode = (m) => {
+    setMode(m)
+    setError('')
+    setOtpStep(false)
+    setOtp('')
+  }
 
   const submitPassword = async (e) => {
     e.preventDefault()
-    setError(''); setBusy(true)
+    setError('')
+    setBusy(true)
     try {
-      const { data } = await api.post('/api/auth/login', { identifier, password })
+      const { data } = await api.post('/api/auth/login', { identifier: identifier.trim(), password })
       login(data.token, data.user)
       goHome()
     } catch (err) {
-      if (errorCode(err) === 'PHONE_NOT_VERIFIED') {
-        // account exists but the mobile number was never verified: send a fresh code and continue there
-        try { await api.post('/api/auth/resend-otp', { identifier }) } catch { /* cooldown: a code was just sent */ }
-        navigate('/verify', { state: { phone: identifier } })
+      const code = errorCode(err)
+      if (code === 'ACCOUNT_NOT_VERIFIED' || code === 'PHONE_NOT_VERIFIED') {
+        // The account exists but the email/phone is not verified yet. Send a fresh code
+        // (ignore cooldown errors) and continue on the verification screen.
+        try { await api.post('/api/auth/resend-otp', { identifier: identifier.trim() }) } catch { /* cooldown */ }
+        navigate('/verify', { state: { identifier: identifier.trim() } })
         return
       }
       setError(errorMessage(err))
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   const requestOtp = async (e) => {
     e?.preventDefault()
-    setError(''); setBusy(true)
+    setError('')
+    setBusy(true)
     try {
-      const { data } = await api.post('/api/auth/login-otp/request', { identifier })
-      setOtpStep(true); setOtp(''); restart(data.resendAfterSeconds || 30)
-    } catch (err) { setError(errorMessage(err)) } finally { setBusy(false) }
+      const { data } = await api.post('/api/auth/login-otp/request', { identifier: identifier.trim() })
+      setOtpStep(true)
+      setOtp('')
+      restart(data.resendAfterSeconds || 30)
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setBusy(false)
+    }
   }
 
   const verifyOtp = async (e) => {
     e.preventDefault()
-    setError(''); setBusy(true)
+    setError('')
+    setBusy(true)
     try {
-      const { data } = await api.post('/api/auth/login-otp/verify', { identifier, otp })
+      const { data } = await api.post('/api/auth/login-otp/verify', { identifier: identifier.trim(), otp })
       login(data.token, data.user)
       goHome()
-    } catch (err) { setError(errorMessage(err)) } finally { setBusy(false) }
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -83,7 +105,7 @@ export default function Login() {
       {mode === 'password' && (
         <form onSubmit={submitPassword} className="space-y-4">
           <Input label={t('Mobile number or email')} value={identifier} autoComplete="username"
-            onChange={(e) => setIdentifier(e.target.value)} placeholder="98765 43210" required />
+            onChange={(e) => setIdentifier(e.target.value)} placeholder="98765 43210 or you@example.com" required />
           <Input label={t('Password')} type="password" value={password} autoComplete="current-password"
             onChange={(e) => setPassword(e.target.value)} required />
           <div className="text-right">
@@ -98,7 +120,7 @@ export default function Login() {
       {mode === 'otp' && !otpStep && (
         <form onSubmit={requestOtp} className="space-y-4">
           <Input label={t('Mobile number or email')} value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)} placeholder="98765 43210" required
+            onChange={(e) => setIdentifier(e.target.value)} placeholder="98765 43210 or you@example.com" required
             hint={t("We'll send a 6-digit code. Email works only if it is verified.")} />
           <Button type="submit" size="lg" className="w-full" loading={busy}>{t('Send code')}</Button>
         </form>

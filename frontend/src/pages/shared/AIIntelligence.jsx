@@ -4,7 +4,14 @@ import {
   CloudRain, Wind, Sun, Building2, Send, Download, FileText
 } from 'lucide-react'
 
-const FASTAPI_URL = 'http://localhost:8000'
+const AI_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000'
+const AI_API_KEY = import.meta.env.VITE_AI_API_KEY || ''
+
+function aiFetch(path, options = {}) {
+  const headers = { ...(options.headers || {}) }
+  if (AI_API_KEY) headers['X-API-Key'] = AI_API_KEY
+  return fetch(`${AI_URL}${path}`, { ...options, headers })
+}
 
 export default function AIIntelligence() {
   const [activeTab, setActiveTab] = useState('safety')
@@ -71,7 +78,7 @@ export default function AIIntelligence() {
     if (apiKey) formData.append('api_key', apiKey)
 
     try {
-      const res = await fetch(`${FASTAPI_URL}/api/ppe-audit`, {
+      const res = await aiFetch('/api/ppe-audit', {
         method: 'POST',
         body: formData
       })
@@ -165,7 +172,7 @@ export default function AIIntelligence() {
     if (apiKey) formData.append('api_key', apiKey)
 
     try {
-      const res = await fetch(`${FASTAPI_URL}/api/crack-diagnostics`, {
+      const res = await aiFetch('/api/crack-diagnostics', {
         method: 'POST',
         body: formData
       })
@@ -214,7 +221,7 @@ export default function AIIntelligence() {
   const runPlanningValuation = async () => {
     setPlanLoading(true)
     try {
-      const res = await fetch(`${FASTAPI_URL}/api/planning-valuation`, {
+      const res = await aiFetch('/api/planning-valuation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -272,7 +279,7 @@ export default function AIIntelligence() {
   const handleWeatherSelect = async (condition) => {
     setWeatherCondition(condition)
     try {
-      const res = await fetch(`${FASTAPI_URL}/api/weather-advisory?condition=${encodeURIComponent(condition)}`)
+      const res = await aiFetch(`/api/weather-advisory?condition=${encodeURIComponent(condition)}`)
       if (res.ok) {
         const data = await res.json()
         setWeatherData(data)
@@ -324,7 +331,7 @@ export default function AIIntelligence() {
     setChatLoading(true)
 
     try {
-      const res = await fetch(`${FASTAPI_URL}/api/chat`, {
+      const res = await aiFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userText, history: newHistory, api_key: apiKey })
@@ -376,7 +383,7 @@ export default function AIIntelligence() {
               className="rounded-lg border border-ink-600 bg-ink-800 px-3 py-1.5 text-xs text-white placeholder-ink-400 focus:outline-none focus:border-brand-500"
             />
             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${apiKey ? 'bg-emerald-500/20 text-emerald-400' : 'bg-brand-500/20 text-brand-400'}`}>
-              {apiKey ? '⚡ Gemini 1.5' : '🛡️ Demo Mode'}
+              {apiKey ? '⚡ Gemini Live' : '🛡️ Demo Mode'}
             </span>
           </div>
         </div>

@@ -7,7 +7,7 @@
 
 ## 📌 Executive Summary
 
-The **Multimodal Construction Intelligence Platform** is an enterprise-grade AI decision-support system built for site engineers, project managers, safety auditors, and real-estate developers. It integrates multimodal computer vision (Google Gemini 1.5 Pro / Flash) with civil engineering domain rules compliant with **OSHA 1926 CFR**, **IS 456:2000**, and the **National Building Code (NBC) of India 2016**.
+The **Multimodal Construction Intelligence Platform** is an enterprise-grade AI decision-support system built for site engineers, project managers, safety auditors, and real-estate developers. It integrates multimodal computer vision (Google Gemini) with civil engineering domain rules compliant with **OSHA 1926 CFR**, **IS 456:2000**, and the **National Building Code (NBC) of India 2016**.
 
 Zero external database dependencies ensure seamless **1-click deployment on Streamlit Community Cloud, Render, or Docker**.
 
@@ -16,7 +16,7 @@ Zero external database dependencies ensure seamless **1-click deployment on Stre
 ## 🌟 Key Features & Epic Coverage
 
 ### 🦺 1. Site Safety & PPE Vision Audit (Epic 2)
-- **Computer Vision Model:** Google Gemini 1.5 Multimodal Vision with high-fidelity demonstration mode fallback.
+- **Computer Vision Model:** Google Gemini multimodal vision with high-fidelity demonstration mode fallback.
 - **Safety Compliance Check:** Real-time auditing for **Hard Hats (IS 2925 / OSHA 1926.100)**, **High-Vis Vests (IS 15809)**, **Steel-Toe Boots (IS 15298)**, and **Fall Arrest Harnesses (OSHA 1926.502)**.
 - **Structured JSON Output:** Returns `safety_score` (0-100), `overall_status`, itemized PPE checklist, and identified physical hazards with severity classifications (**Critical**, **High**, **Medium**, **Low**) and actionable engineering remedies.
 - **Downloadable Reports:** Direct export to structured JSON.
@@ -53,7 +53,7 @@ Zero external database dependencies ensure seamless **1-click deployment on Stre
  │       CivicPulse AI Multi-Tier Processing Engine        │
  ├────────────────────────────┬────────────────────────────┤
  │  Multimodal AI Vision      │  Deterministic Engineering │
- │  - Gemini 1.5 Flash / Pro  │  - IS 456:2000 Code Limits │
+ │  - Google Gemini (env)    │  - IS 456:2000 Code Limits │
  │  - OSHA 1926 Rulesets      │  - BOM Quantity Formulas   │
  │  - High-Fidelity Demo Mode │  - INR Currency Models     │
  └────────────────────────────┴────────────────────────────┘
@@ -114,19 +114,35 @@ Interactive Swagger API docs available at **`http://localhost:8000/docs`**.
 
 #### Step D: Launch React + Vite Frontend (Optional)
 ```bash
-cd buildtrack/frontend
+cd ../frontend
+npm install
 npm run dev
 ```
 
 ---
 
-### 3. Docker Deployment
+### 3. Configuration
+
+| Variable | Purpose |
+| --- | --- |
+| `GEMINI_API_KEY` | Google AI key. Leave empty to run every feature in demo mode. |
+| `GEMINI_MODEL` | Model name (default `gemini-3.6-flash`). |
+| `AI_ALLOWED_ORIGINS` | Comma-separated browser origins allowed by CORS. |
+| `AI_API_KEY` | Optional shared key required on all AI routes (sent as `X-API-Key`). |
+
+---
+
+### 4. Docker Deployment
 ```bash
-# Build Docker image
+# Build the image
 docker build -t construction-intelligence-platform .
 
-# Run container
-docker run -p 8501:8501 -p 8000:8000 construction-intelligence-platform
+# FastAPI service used by the React app
+docker run --rm -p 8000:8000 -e GEMINI_API_KEY=your-key construction-intelligence-platform
+
+# Optional Streamlit console on port 8501
+docker run --rm -p 8501:8501 -e GEMINI_API_KEY=your-key construction-intelligence-platform \
+  streamlit run app.py --server.port=8501 --server.address=0.0.0.0
 ```
 
 ---
@@ -176,7 +192,7 @@ venv/bin/python3 test_suite.py
     }
   ],
   "auditor_summary": "Perimeter fall protection is deficient and requires halting edge works.",
-  "mode": "GEMINI_1.5_LIVE"
+  "mode": "GEMINI_LIVE_MULTIMODAL"
 }
 ```
 

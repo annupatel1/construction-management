@@ -4,12 +4,13 @@ Strict Pydantic JSON contracts, CORS support, and REST endpoints for all Epics.
 Platform ID: 6ac4c98d1dcde6d7857c1642
 """
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from PIL import Image
 import io
+import os
 
 from ai_engine import analyze_ppe_safety, analyze_concrete_crack, get_chatbot_response
 from planning_engine import calculate_project_metrics, STRUCTURE_BENCHMARKS
@@ -21,14 +22,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for React/Vite and external clients
+# Restrict browser access with AI_ALLOWED_ORIGINS (comma separated). Use "*" only in development.
+_origins = [o.strip() for o in os.getenv("AI_ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_origins or ["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Optional shared key for the service itself. Leave empty in local development.
+_AI_API_KEY = os.getenv("AI_API_KEY", "").strip()
+
+
+def require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
+    """Reject requests when AI_API_KEY is configured and the caller does not send it."""
+    if _AI_API_KEY and x_api_key != _AI_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 # ---------------------------------------------------------
@@ -135,7 +146,7 @@ class ChatResponse(BaseModel):
 
 @app.get("/api/health")
 def health_check():
-    """Health check endpoint."""
+    """Public health check endpoint."""
     return {
         "status": "healthy",
         "service": "Multimodal Construction Intelligence Platform",
@@ -144,7 +155,17 @@ def health_check():
     }
 
 
-@app.post("/api/ppe-audit", response_model=PPEAuditResponse)
+@app.get("/")
+def root():
+    """Service discovery for humans and uptime checks."""
+    return {
+        "service": "Multimodal Construction Intelligence API",
+        "docs": "/docs",
+        "health": "/api/health",
+    }
+
+
+@app.post("/api/ppe-audit", response_model=PPEAuditResponse, dependencies=[Depends(require_api_key)])
 async def ppe_audit_endpoint(
     file: UploadFile = File(...),
     api_key: Optional[str] = Form(None)
@@ -166,7 +187,7 @@ async def ppe_audit_endpoint(
     return result
 
 
-@app.post("/api/crack-diagnostics", response_model=CrackDiagnosticResponse)
+@app.post("/api/crack-diagnostics", response_model=CrackDiagnosticResponse, dependencies=[Depends(require_api_key)])
 async def crack_diagnostics_endpoint(
     file: UploadFile = File(...),
     api_key: Optional[str] = Form(None)
@@ -188,7 +209,7 @@ async def crack_diagnostics_endpoint(
     return result
 
 
-@app.post("/api/planning-valuation", response_model=PlanningValuationResponse)
+@app.post("/api/planning-valuation", response_model=PlanningValuationResponse, dependencies=[Depends(require_api_key)])
 def planning_valuation_endpoint(req: PlanningValuationRequest):
     """
     Project Estimation and Real Estate Valuation in INR (Lakhs and Crores).
@@ -202,7 +223,7 @@ def planning_valuation_endpoint(req: PlanningValuationRequest):
     return metrics
 
 
-@app.get("/api/weather-advisory")
+@app.get("/api/weather-advisory", dependencies=[Depends(require_api_key)])
 def weather_advisory_endpoint(
     condition: str = Query("Normal Fair-Weather Conditions (22°C - 30°C)")
 ):
@@ -212,13 +233,13 @@ def weather_advisory_endpoint(
     return get_weather_advisory(condition)
 
 
-@app.get("/api/weather-conditions")
+@app.get("/api/weather-conditions", dependencies=[Depends(require_api_key)])
 def weather_conditions_list():
     """List available weather condition presets."""
     return list(WEATHER_PROTOCOLS.keys())
 
 
-@app.post("/api/chat", response_model=ChatResponse)
+@app.post("/api/chat", response_model=ChatResponse, dependencies=[Depends(require_api_key)])
 def chat_endpoint(req: ChatRequest):
     """
     Multi-turn Construction Engineering Assistant Chatbot.

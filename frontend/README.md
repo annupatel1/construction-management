@@ -13,7 +13,8 @@ npm run dev
 ```
 
 Open http://localhost:5173. The backend must be running on http://localhost:8080
-(change it by copying `.env.example` to `.env` and editing `VITE_API_URL`). Set
+(change it by copying `.env.example` to `.env` and editing `VITE_API_URL`). Point
+`VITE_AI_URL` at the FastAPI AI service (default http://localhost:8000), and set
 `VITE_SUPPORT_EMAIL` to the monitored pilot inbox shown on `/support` and `/privacy`.
 
 Build for production: `npm run build` (output in `dist/`).
@@ -22,8 +23,9 @@ Build for production: `npm run build` (output in `dist/`).
 
 OTP codes are printed in the **backend console** (IntelliJ) while `OTP_*_DELIVERY` is `CONSOLE`.
 
-1. Register accounts (use different 10-digit numbers starting 6-9): a **House owner**, a
-   **Contractor**, a **Labour**, and optionally an **Engineer**. Copy each OTP from the backend console.
+1. Register accounts (a valid email address and a different 10-digit mobile number starting 6-9 for each
+   role): a **House owner**, a **Contractor**, a **Labour**, and optionally an **Engineer**. The app emails
+   a 6-digit verification code; while `OTP_EMAIL_DELIVERY=CONSOLE` the code is printed in the backend console.
 2. **House owner**: Find contractors -> Start project -> pick the contractor, fill details, create.
 3. **Contractor**: open the project -> Labour tab -> Assign labour (pick the labourer, daily rate).
 4. **Contractor**: open the labourer -> mark attendance, pay wages; add material expenses.

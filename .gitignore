@@ -1,18 +1,41 @@
-# Java/Maven/Gradle build outputs
+# Java / Maven
 /target/
+**/target/
 /.build/
+**/build/
+
+# Node
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # IDE files
-/.idea/
-/*.iml
+.idea/
+*.iml
+.vscode/
 
-# Environment variables - NEVER commit these!
+# Environment variables - NEVER commit real secrets
 .env
+.env.*
+!.env.example
 *.env.local
 
-# Logs
+# Logs and temp files
 *.log
 /tmp/
+.DS_Store
 
 # JAR/WAR archives
 *.jar

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { HardHat, Home, Hammer, PencilRuler } from 'lucide-react'
 import api, { errorMessage } from '../../lib/api'
+import { useToast } from '../../context/ToastContext'
 import { useT } from '../../i18n/LanguageContext'
 import AuthShell from '../../components/AuthShell'
 import { Alert, Button, Input, Textarea } from '../../components/ui'
@@ -16,6 +17,7 @@ const ROLES = [
 export default function Register() {
   const { t } = useT()
   const navigate = useNavigate()
+  const toast = useToast()
   const [form, setForm] = useState({ roleName: '', name: '', phone: '', email: '', password: '', address: '' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -25,12 +27,20 @@ export default function Register() {
     e.preventDefault()
     setError('')
     if (!form.roleName) return setError(t('Please choose how you will use the app'))
+    const email = form.email.trim().toLowerCase()
+    if (!email) return setError(t('Email address is required'))
     const phone = form.phone.replace(/\D/g, '').slice(-10)
+    if (form.password.length < 8) return setError(t('At least 8 characters'))
     setBusy(true)
     try {
-      await api.post('/api/auth/register', { ...form, phone, email: form.email.trim() || null })
-      navigate('/verify', { state: { phone } })
-    } catch (err) { setError(errorMessage(err)) } finally { setBusy(false) }
+      const { data } = await api.post('/api/auth/register', { ...form, phone, email })
+      toast?.success?.(data?.message || t('We sent a verification code to your email.'))
+      navigate('/verify', { replace: true, state: { identifier: email } })
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -58,17 +68,19 @@ export default function Register() {
         </div>
 
         <Input label={t('Full name')} value={form.name} onChange={set('name')} autoComplete="name" required />
+        <Input label={t('Email address')} type="email" value={form.email} onChange={set('email')} autoComplete="email"
+          placeholder="you@example.com" required hint={t('Your primary login and communication email')} />
         <Input label={t('Mobile number')} value={form.phone} onChange={set('phone')} prefix="+91"
-          inputMode="numeric" maxLength={14} placeholder="98765 43210" autoComplete="tel" required
-          hint={t('We will send a code to verify this number')} />
-        <Input label={t('Email (optional)')} type="email" value={form.email} onChange={set('email')} autoComplete="email"
-          hint={t('You can also use email to log in once you verify it')} />
+          inputMode="numeric" maxLength={14} placeholder="98765 43210" autoComplete="tel" required />
         <Input label={t('Password')} type="password" value={form.password} onChange={set('password')}
           autoComplete="new-password" minLength={8} required hint={t('At least 8 characters')} />
         <Textarea label={t('Address (city, area)')} value={form.address} onChange={set('address')}
           placeholder="Vijay Nagar, Indore, Madhya Pradesh" required />
 
-        <Button type="submit" size="lg" className="w-full" loading={busy}>{t('Continue')}</Button>
+        <Button type="submit" size="lg" className="w-full" loading={busy}>{t('Create Account')}</Button>
+        <p className="text-center text-xs text-ink-500">
+          {t('We will email you a 6-digit code to verify your account.')}
+        </p>
       </form>
     </AuthShell>
   )

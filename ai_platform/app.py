@@ -170,18 +170,18 @@ with st.sidebar:
         "Google Gemini API Key",
         type="password",
         placeholder="AIzaSy...",
-        help="Enter your Gemini 1.5 API key. If left blank, platform seamlessly runs in High-Fidelity Demonstration Mode."
+        help="Enter your Google Gemini API key. If left blank, the platform seamlessly runs in High-Fidelity Demonstration Mode."
     )
     
     if gemini_key_input:
-        st.success("⚡ Gemini 1.5 Multimodal Connected")
+        st.success("⚡ Gemini Multimodal Connected")
     else:
         st.info("🛡️ Demonstration Mode Active\n(Zero-config fallback with OSHA & IS 456 datasets)")
         
     st.markdown("---")
     st.subheader("📐 Architecture & Standards")
     st.markdown("""
-    - **Vision LLM:** Gemini 1.5 Flash / Pro
+    - **Vision LLM:** Google Gemini (configurable via `GEMINI_MODEL`)
     - **Safety Standard:** OSHA 1926 CFR
     - **Concrete Code:** IS 456:2000 & ACI 224R
     - **Building Code:** NBC India 2016

@@ -40,8 +40,9 @@ public class CustomUserDetails implements UserDetails {
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
-    /** An account is usable only after phone verification and while it is active. */
+    /** An account is usable once at least one identifier (email or phone) is verified and it is active. */
     @Override public boolean isEnabled() {
-        return user.isPhoneVerified() && user.getAccountStatus() == AccountStatus.ACTIVE;
+        return (user.isPhoneVerified() || user.isEmailVerified())
+                && user.getAccountStatus() == AccountStatus.ACTIVE;
     }
 }

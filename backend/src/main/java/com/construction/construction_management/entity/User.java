@@ -26,7 +26,7 @@ public class User {
 
     String address;
 
-    /** Account is active only after the phone OTP is verified. */
+    /** Account is usable once the email or phone OTP has been verified. */
     boolean phoneVerified;
 
     /** Email can be used to log in / reset password only once verified. */

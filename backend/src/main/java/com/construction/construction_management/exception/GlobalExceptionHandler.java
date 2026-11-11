@@ -59,10 +59,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "Invalid mobile number / email or password");
     }
 
-    // Account exists but the phone number was never verified with an OTP
+    // Account exists but neither the email nor the phone has been verified with an OTP
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ErrorResponse> handleDisabled(DisabledException ex) {
-        return build(HttpStatus.FORBIDDEN, "Please verify your mobile number to continue", "PHONE_NOT_VERIFIED");
+        return build(HttpStatus.FORBIDDEN, "Please verify your email or mobile number to continue",
+                "ACCOUNT_NOT_VERIFIED");
     }
 
     @ExceptionHandler(TooManyRequestsException.class)

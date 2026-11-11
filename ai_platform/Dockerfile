@@ -1,34 +1,33 @@
-# Dockerfile for Multimodal Construction Intelligence Platform
-# Skill Wallet Capstone Project 1 | Platform ID: 6ac4c98d1dcde6d7857c1642
+# Multimodal Construction Intelligence AI service
+FROM docker.io/library/python:3.12-slim
 
-FROM python:3.11-slim
-
-# Prevent Python from writing .pyc and buffer output
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies
+# Run the service as an unprivileged user.
+RUN useradd --create-home --shell /bin/bash appuser
+
+# curl is used by the container health check
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt httpx
+COPY requirements.txt requirements-api.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
-COPY app.py backend_api.py ai_engine.py planning_engine.py weather_engine.py test_suite.py ./
-COPY samples/ ./samples/
+COPY --chown=appuser:appuser app.py backend_api.py ai_engine.py planning_engine.py weather_engine.py test_suite.py ./
+COPY --chown=appuser:appuser samples/ ./samples/
 
-# Expose Streamlit and FastAPI ports
-EXPOSE 8501 8000
+USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8501/_stcore/health || exit 1
+EXPOSE 8000 8501
 
-# Default command launches turnkey Streamlit app
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://127.0.0.1:8000/api/health || exit 1
+
+# Default: the FastAPI service used by the React app.
+# Run the Streamlit console with:
+#   docker run ... streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+CMD ["uvicorn", "backend_api:app", "--host", "0.0.0.0", "--port", "8000"]

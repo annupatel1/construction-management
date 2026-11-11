@@ -19,6 +19,7 @@ import com.construction.construction_management.service.AuthService;
 import com.construction.construction_management.util.Identifier;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -78,9 +79,8 @@ public class AuthServiceImpl implements AuthService {
 
     /** A user may use an identifier for OTP login / reset only if that identifier is verified. */
     private boolean eligible(User user, Identifier id) {
-        return user.isPhoneVerified()
-                && user.getAccountStatus() == AccountStatus.ACTIVE
-                && (id.isPhone() || user.isEmailVerified());
+        return user.getAccountStatus() == AccountStatus.ACTIVE
+                && (id.isPhone() ? user.isPhoneVerified() : user.isEmailVerified());
     }
 
     /**
@@ -104,27 +104,29 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public OtpSentResponse register(RegisterRequest request) {
-        // P0: only HOUSE_OWNER, CONTRACTOR, LABOUR may register publicly;
-        // ADMIN must be provisioned by a controlled process (e.g., script / admin UI)
-        String roleName = request.getRoleName();
+        // Public self-registration is limited to marketplace roles.
+        // ADMIN must be provisioned by an operator through the admin UI or a seed script.
+        RoleName roleName = request.getRoleName();
         if (roleName == null) {
             throw new BadRequestException("Role is required");
         }
-        if (roleName.equals(RoleName.ADMIN.name())) {
-            throw new BadRequestException("Admin role cannot be selected during public registration");
-        }
-        // optionally, restrict to the three allowed roles:
-        if (!roleName.equals(RoleName.HOUSE_OWNER.name())
-                && !roleName.equals(RoleName.CONTRACTOR.name())
-                && !roleName.equals(RoleName.LABOUR.name())) {
-            throw new BadRequestException("Invalid role selected. Allowed: HOUSE_OWNER, CONTRACTOR, LABOUR");
+        if (roleName == RoleName.ADMIN) {
+            throw new BadRequestException("Admin accounts cannot be created through public registration");
         }
         Identifier phone = Identifier.phone(request.getPhone());
+        Identifier email = Identifier.email(request.getEmail());
 
         User user = userRepository.findByPhone(phone.value()).orElse(null);
-        if (user != null && user.isPhoneVerified()) {
+        if (user != null && (user.isPhoneVerified() || user.isEmailVerified())) {
+            // Never let a fresh registration overwrite an account that has already proven ownership
+            // of its phone or email. This prevents account takeover via a known phone number.
             throw new ConflictException("This phone number is already registered. Please log in.");
         }
+        userRepository.findByEmail(email.value()).ifPresent(other -> {
+            if (other.isEmailVerified()) {
+                throw new ConflictException("This email is already registered. Please log in.");
+            }
+        });
         if (user == null) {
             user = new User();
             user.setPhone(phone.value());
@@ -139,42 +141,41 @@ public class AuthServiceImpl implements AuthService {
         user.setRole(role);
         user.setPhoneVerified(false);
 
-        if (request.getEmail() != null && !request.getEmail().isBlank()) {
-            String email = Identifier.email(request.getEmail()).value();
-            claimEmail(user, email);
-            user.setEmail(email);
-        } else {
-            user.setEmail(null);
-        }
+        claimEmail(user, email.value());
+        user.setEmail(email.value());
         user.setEmailVerified(false);
 
         userRepository.save(user);
-        otpService.issue(phone, OtpPurpose.REGISTER, true);
-        return sent("We have sent a 6-digit code to verify your mobile number.", phone);
+        otpService.issue(email, OtpPurpose.REGISTER, true);
+        return sent("We have sent a 6-digit verification code to your email.", email);
     }
 
     @Override
     @Transactional(noRollbackFor = BadRequestException.class)
     public AuthResponse verifyRegistration(VerifyOtpRequest request) {
-        Identifier phone = Identifier.phone(request.getIdentifier());
-        otpService.verify(phone, OtpPurpose.REGISTER, request.getOtp());
+        Identifier id = Identifier.parse(request.getIdentifier());
+        otpService.verify(id, OtpPurpose.REGISTER, request.getOtp());
 
-        User user = userRepository.findByPhone(phone.value())
+        User user = find(id)
                 .orElseThrow(() -> new BadRequestException("Invalid or expired code. Please request a new one."));
-        user.setPhoneVerified(true);
+        if (id.email()) {
+            user.setEmailVerified(true);
+        } else {
+            user.setPhoneVerified(true);
+        }
         userRepository.save(user);
-        return authResponse(user, "Mobile number verified. Welcome!");
+        return authResponse(user, "Account verified. Welcome!");
     }
 
     @Override
     @Transactional
     public OtpSentResponse resendRegistrationOtp(OtpRequest request) {
-        Identifier phone = Identifier.phone(request.getIdentifier());
-        boolean pending = userRepository.findByPhone(phone.value())
-                .map(u -> !u.isPhoneVerified())
+        Identifier id = Identifier.parse(request.getIdentifier());
+        boolean pending = find(id)
+                .map(u -> id.email() ? !u.isEmailVerified() : !u.isPhoneVerified())
                 .orElse(false);
-        otpService.issue(phone, OtpPurpose.REGISTER, pending);
-        return sent(GENERIC_SENT, phone);
+        otpService.issue(id, OtpPurpose.REGISTER, pending);
+        return sent(GENERIC_SENT, id);
     }
 
     // ------------------------------------------------------------ password login
@@ -188,8 +189,8 @@ public class AuthServiceImpl implements AuthService {
         try {
             User user = find(id).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
             if (id.email() && !user.isEmailVerified()) {
-                // an unverified email cannot be used to log in
-                throw new BadCredentialsException("Invalid credentials");
+                // The account exists but this email has not completed OTP verification yet.
+                throw new DisabledException("Please verify your email to continue");
             }
             if (user.getAccountStatus() != AccountStatus.ACTIVE) {
                 // do not reveal that the account exists but is suspended
@@ -200,7 +201,7 @@ public class AuthServiceImpl implements AuthService {
                 throw new BadCredentialsException("Invalid credentials");
             }
 
-            // Throws BadCredentialsException for a wrong password, DisabledException if the phone is not verified yet.
+            // Throws BadCredentialsException for a wrong password, DisabledException if no identifier is verified yet.
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getPhone(), request.getPassword()));
 

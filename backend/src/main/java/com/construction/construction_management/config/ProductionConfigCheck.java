@@ -29,6 +29,9 @@ public class ProductionConfigCheck {
     void check() {
         requireStrongSecret("JWT_SECRET", jwtSecret);
         requireStrongSecret("OTP_SECRET", otpSecret);
+        if (otpSecret.equals(jwtSecret)) {
+            throw new IllegalStateException("OTP_SECRET must be different from JWT_SECRET");
+        }
         if ("CONSOLE".equalsIgnoreCase(phoneDelivery)) {
             throw new IllegalStateException("OTP_PHONE_DELIVERY must not be CONSOLE in production");
         }

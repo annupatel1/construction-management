@@ -11,7 +11,7 @@ public class ErrorResponse {
     int status;
     String message;
     LocalDateTime timestamp;
-    /** Optional machine-readable code the frontend can react to, e.g. PHONE_NOT_VERIFIED. */
+    /** Optional machine-readable code the frontend can react to, e.g. ACCOUNT_NOT_VERIFIED. */
     String code;
     /** Correlation id echoed in the X-Request-Id response header and server logs. */
     String requestId;

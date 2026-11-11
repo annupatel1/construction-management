@@ -14,22 +14,24 @@ export default function VerifyOtp() {
   const { login } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
-  const phone = useLocation().state?.phone
+  const locationState = useLocation().state || {}
+  const identifier = locationState.identifier || locationState.email || locationState.phone
+  const isEmail = identifier && identifier.includes('@')
 
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [left, restart] = useCountdown(30)
 
-  if (!phone) return <Navigate to="/register" replace />
+  if (!identifier) return <Navigate to="/register" replace />
 
   const submit = async (e) => {
     e.preventDefault()
     setError(''); setBusy(true)
     try {
-      const { data } = await api.post('/api/auth/verify-otp', { identifier: phone, otp })
+      const { data } = await api.post('/api/auth/verify-otp', { identifier, otp })
       login(data.token, data.user)
-      toast.success(t('Mobile number verified. Welcome!'))
+      toast.success(t('Account verified. Welcome!'))
       navigate('/', { replace: true })
     } catch (err) { setError(errorMessage(err)); setOtp('') } finally { setBusy(false) }
   }
@@ -37,7 +39,7 @@ export default function VerifyOtp() {
   const resend = async () => {
     setError('')
     try {
-      const { data } = await api.post('/api/auth/resend-otp', { identifier: phone })
+      const { data } = await api.post('/api/auth/resend-otp', { identifier })
       restart(data.resendAfterSeconds || 30)
       toast.success(t('A new code has been sent'))
     } catch (err) { setError(errorMessage(err)) }
@@ -45,9 +47,11 @@ export default function VerifyOtp() {
 
   return (
     <AuthShell
-      title={t('Verify your mobile number')}
-      subtitle={`${t('Enter the 6-digit code sent to')} +91 ${phone}`}
-      footer={<Link to="/register" className="font-medium text-brand-700 hover:underline">{t('Wrong number? Go back')}</Link>}
+      title={isEmail ? t('Verify your email') : t('Verify your mobile number')}
+      subtitle={isEmail
+        ? `${t('Enter the 6-digit code sent to')} ${identifier}`
+        : `${t('Enter the 6-digit code sent to')} +91 ${identifier}`}
+      footer={<Link to="/register" className="font-medium text-brand-700 hover:underline">{t('Need to make changes? Go back')}</Link>}
     >
       <form onSubmit={submit} className="space-y-5">
         {error && <Alert>{error}</Alert>}

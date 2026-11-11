@@ -1,32 +1,79 @@
 """
 ai_engine.py - Multimodal AI Engine for Construction Intelligence Platform
-Supports Google Gemini 1.5 with graceful fallback to High-Fidelity Demonstration Mode.
+Supports Google Gemini vision/chat with graceful fallback to High-Fidelity Demonstration Mode.
 Compliant with OSHA 1926 Safety Standards, IS 456:2000, and NBC 2016.
 """
 
 import json
 import os
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from PIL import Image
 
+# Current Gemini model. Override with GEMINI_MODEL when Google ships a newer one.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+
+# Prefer the current google-genai SDK; fall back to the legacy google-generativeai SDK.
 try:
-    import google.generativeai as genai
-    HAS_GENAI = True
+    from google import genai as new_genai
+    HAS_NEW_GENAI = True
 except ImportError:
-    HAS_GENAI = False
+    new_genai = None
+    HAS_NEW_GENAI = False
+
+try:
+    import google.generativeai as legacy_genai
+    HAS_LEGACY_GENAI = True
+except ImportError:
+    legacy_genai = None
+    HAS_LEGACY_GENAI = False
 
 
-def _get_gemini_model(api_key: Optional[str] = None, model_name: str = "gemini-1.5-flash"):
-    """Initialize and return a Gemini GenerativeModel or None if no valid key."""
+def _generate_text(
+    prompt: str,
+    image: Optional[Image.Image] = None,
+    api_key: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Generate text with Gemini. Returns ``(text, error)``.
+
+    The modern ``google-genai`` SDK is tried first, then the legacy
+    ``google-generativeai`` SDK. Any failure returns ``(None, reason)`` so the
+    caller can fall back to the deterministic demonstration result instead of
+    returning a 500 to the user.
+    """
     key = api_key or os.getenv("GEMINI_API_KEY", "")
-    if not key or not HAS_GENAI:
-        return None
-    try:
-        genai.configure(api_key=key)
-        return genai.GenerativeModel(model_name)
-    except Exception:
-        return None
+    if not key:
+        return None, "GEMINI_API_KEY is not configured"
+
+    last_error = None
+
+    if HAS_NEW_GENAI:
+        try:
+            client = new_genai.Client(api_key=key)
+            contents = [prompt, image] if image is not None else prompt
+            response = client.models.generate_content(model=GEMINI_MODEL, contents=contents)
+            text = getattr(response, "text", None)
+            if text:
+                return text, None
+            last_error = "The model returned an empty response"
+        except Exception as exc:  # noqa: BLE001 - fall back to demo mode on any API error
+            last_error = str(exc)
+
+    if HAS_LEGACY_GENAI:
+        try:
+            legacy_genai.configure(api_key=key)
+            model = legacy_genai.GenerativeModel(GEMINI_MODEL)
+            contents = [prompt, image] if image is not None else prompt
+            response = model.generate_content(contents)
+            text = getattr(response, "text", None)
+            if text:
+                return text, None
+            last_error = "The model returned an empty response"
+        except Exception as exc:  # noqa: BLE001
+            last_error = str(exc)
+
+    return None, last_error or "No Gemini SDK is installed"
 
 
 def _clean_json_response(raw_text: str) -> Dict[str, Any]:
@@ -99,20 +146,18 @@ Evaluate workers and conditions in the image. You must return ONLY a valid, pars
 
 def analyze_ppe_safety(image: Image.Image, api_key: Optional[str] = None) -> Dict[str, Any]:
     """Audits PPE safety from image with Gemini or realistic fallback demo mode."""
-    model = _get_gemini_model(api_key)
-    if model:
+    text, error = _generate_text(PPE_AUDIT_PROMPT, image, api_key)
+    if text:
         try:
-            response = model.generate_content([PPE_AUDIT_PROMPT, image])
-            data = _clean_json_response(response.text)
-            data["mode"] = "GEMINI_1.5_LIVE"
+            data = _clean_json_response(text)
+            data["mode"] = "GEMINI_LIVE_MULTIMODAL"
             return data
-        except Exception as e:
-            # Fallback gracefully if API rate limit or quota exceeded
-            demo = get_demo_ppe_result()
-            demo["mode"] = f"DEMO_FALLBACK (API Note: {str(e)[:90]})"
-            return demo
-    else:
-        return get_demo_ppe_result()
+        except Exception as exc:  # noqa: BLE001
+            error = f"Could not parse the model JSON: {exc}"
+    demo = get_demo_ppe_result()
+    if error:
+        demo["mode"] = f"DEMO_FALLBACK (API Note: {error[:90]})"
+    return demo
 
 
 def get_demo_ppe_result() -> Dict[str, Any]:
@@ -223,19 +268,18 @@ You must return ONLY a valid, parseable JSON object matching this exact schema:
 
 def analyze_concrete_crack(image: Image.Image, api_key: Optional[str] = None) -> Dict[str, Any]:
     """Diagnoses structural concrete cracks using Gemini Vision or fallback demo."""
-    model = _get_gemini_model(api_key)
-    if model:
+    text, error = _generate_text(CRACK_AUDIT_PROMPT, image, api_key)
+    if text:
         try:
-            response = model.generate_content([CRACK_AUDIT_PROMPT, image])
-            data = _clean_json_response(response.text)
-            data["mode"] = "GEMINI_1.5_LIVE"
+            data = _clean_json_response(text)
+            data["mode"] = "GEMINI_LIVE_MULTIMODAL"
             return data
-        except Exception as e:
-            demo = get_demo_crack_result()
-            demo["mode"] = f"DEMO_FALLBACK (API Note: {str(e)[:90]})"
-            return demo
-    else:
-        return get_demo_crack_result()
+        except Exception as exc:  # noqa: BLE001
+            error = f"Could not parse the model JSON: {exc}"
+    demo = get_demo_crack_result()
+    if error:
+        demo["mode"] = f"DEMO_FALLBACK (API Note: {error[:90]})"
+    return demo
 
 
 def get_demo_crack_result() -> Dict[str, Any]:
@@ -287,18 +331,10 @@ Provide concise, authoritative, calculation-backed engineering answers with prac
 
 def get_chatbot_response(prompt: str, history: list, api_key: Optional[str] = None) -> str:
     """Multi-turn engineering assistant response with Gemini or domain fallback."""
-    model = _get_gemini_model(api_key)
-    if model:
-        try:
-            # Build conversation history
-            chat = model.start_chat(history=[])
-            prompt_with_persona = f"{SYSTEM_CHAT_PERSONA}\n\nUser Question: {prompt}"
-            response = chat.send_message(prompt_with_persona)
-            return response.text
-        except Exception as e:
-            return _domain_fallback_chat(prompt, str(e))
-    else:
-        return _domain_fallback_chat(prompt)
+    text, error = _generate_text(f"{SYSTEM_CHAT_PERSONA}\n\nUser Question: {prompt}", None, api_key)
+    if text:
+        return text
+    return _domain_fallback_chat(prompt, error)
 
 
 def _domain_fallback_chat(prompt: str, error_msg: Optional[str] = None) -> str:
