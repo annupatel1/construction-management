@@ -19,9 +19,12 @@ RUN mvn -B clean package -DskipTests
 FROM docker.io/library/eclipse-temurin:21-jre-alpine
 
 # curl is used by the container health check; run as an unprivileged user.
+# /app/uploads is created in the image so a named volume inherits the appuser ownership.
 RUN apk add --no-cache curl \
     && addgroup -S appgroup \
-    && adduser -S appuser -G appgroup
+    && adduser -S appuser -G appgroup \
+    && mkdir -p /app/uploads \
+    && chown -R appuser:appgroup /app/uploads
 
 WORKDIR /app
 
@@ -32,6 +35,7 @@ EXPOSE 8080
 
 # Container-aware JVM defaults; override JAVA_OPTS to tune further.
 ENV SPRING_PROFILES_ACTIVE=default \
+    UPLOAD_DIR=/app/uploads \
     JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport"
 
 USER appuser

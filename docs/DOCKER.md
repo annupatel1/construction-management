@@ -2,12 +2,16 @@
 
 BuildTrack ships with a complete multi-container setup:
 
-| Container | Image build | Port | Purpose |
+| Container | Image build | Host port | Purpose |
 | --- | --- | --- | --- |
 | `db` | `mysql:8.4` | internal | MySQL database with a persistent volume |
-| `backend` | [`backend/Dockerfile`](../backend/Dockerfile) | `8080` | Spring Boot REST API |
-| `ai` | [`ai_platform/Dockerfile`](../ai_platform/Dockerfile) | `8000` | FastAPI AI service |
-| `frontend` | [`frontend/Dockerfile`](../frontend/Dockerfile) | `3000` | React app served by Nginx |
+| `backend` | [`backend/Dockerfile`](../backend/Dockerfile) | `127.0.0.1:8080` | Spring Boot REST API and site-photo storage |
+| `ai` | [`ai_platform/Dockerfile`](../ai_platform/Dockerfile) | `127.0.0.1:8000` | FastAPI AI service |
+| `frontend` | [`frontend/Dockerfile`](../frontend/Dockerfile) | `127.0.0.1:3000` | React app served by Nginx |
+| `caddy` | `caddy:2.8-alpine` | `80`, `443` | Optional automatic HTTPS reverse proxy (`proxy` profile) |
+
+The application ports bind to `127.0.0.1` only. In production, public traffic enters
+through Caddy on ports 80/443; the database is never published.
 
 ---
 
@@ -15,7 +19,8 @@ BuildTrack ships with a complete multi-container setup:
 
 - **Docker Engine 24+** with **Docker Compose v2** (`docker compose version`)
 - **4 GB RAM** recommended (MySQL + JVM + AI service)
-- Ports `3000`, `8080`, and `8000` free on the host
+- Local ports `3000`, `8080`, and `8000` free on the host (bound to localhost)
+- For production HTTPS: ports `80` and `443` open, and a DNS name pointing at the server
 
 Podman works too — see the [Podman section](#podman).
 
@@ -58,6 +63,7 @@ In this default setup:
 - OTP codes are printed in the backend logs (`OTP_*_DELIVERY=CONSOLE`).
 - AI runs in deterministic demo mode until `GEMINI_API_KEY` is set.
 - The database is reachable only inside the Compose network.
+- Site photos are written to the `uploads-data` volume, not inside the image.
 
 Watch the logs:
 
@@ -72,11 +78,41 @@ Stop everything:
 docker compose down
 ```
 
-The `db-data` volume survives `down`. To delete the database too:
+The `db-data` and `uploads-data` volumes survive `down`. To delete the database and
+uploaded photos too:
 
 ```bash
 docker compose down -v   # destructive
 ```
+
+---
+
+## Site photo uploads
+
+Progress reports and site issues accept photos from a phone camera or gallery. The
+browser uploads the file to `POST /api/projects/{projectId}/files`; the backend
+checks the project membership and stores the image under the `uploads-data` volume.
+
+- Accepted formats: JPEG, PNG and WebP. Other formats, including SVG, are rejected.
+- Default limit: 10 MB per photo (`UPLOAD_MAX_BYTES` and `UPLOAD_MAX_FILE_SIZE` in `.env`).
+- Generated filenames are random UUIDs; the original client filename is never used.
+- Photos are served from `/api/files/{filename}` with `X-Content-Type-Options: nosniff`
+  and a one-year immutable cache header.
+- Photo URLs are public but unguessable so they can be rendered in an `<img>` tag.
+  Treat them as sensitive: anyone with the URL can view the image. Do not upload
+  identity documents, financial records or other confidential material.
+
+Back up the `uploads-data` volume together with the database. `make backup` runs
+[`deploy/backup-mysql.sh`](../deploy/backup-mysql.sh), which writes both a `.sql.gz`
+dump and a `buildtrack-uploads-*.tar.gz` archive.
+
+```bash
+make backup
+ls -lh backups/
+```
+
+When the backend is not running, the script still backs up MySQL and warns that the
+uploads archive was skipped.
 
 ---
 
@@ -92,6 +128,7 @@ make logs       # follow logs
 make ps         # show service status
 make health     # call the backend and AI health endpoints
 make test       # run backend, frontend and AI tests locally
+make backup     # archive MySQL and uploaded site photos
 make clean      # remove local build output
 ```
 
@@ -108,7 +145,7 @@ docker build -t buildtrack-frontend ./frontend
 Run the API alone (it still needs a database):
 
 ```bash
-docker run --rm -p 8080:8080 \
+docker run --rm -p 127.0.0.1:8080:8080 \
   -e DB_URL="jdbc:mysql://host.docker.internal:3306/construction_management_db" \
   -e DB_USERNAME=root -e DB_PASSWORD=root \
   -e JWT_SECRET="$(openssl rand -hex 32)" \
@@ -118,7 +155,7 @@ docker run --rm -p 8080:8080 \
 Run the AI service alone:
 
 ```bash
-docker run --rm -p 8000:8000 -e GEMINI_API_KEY=your-key buildtrack-ai
+docker run --rm -p 127.0.0.1:8000:8000 -e GEMINI_API_KEY=your-key buildtrack-ai
 curl -fsS http://localhost:8000/api/health
 ```
 
@@ -126,16 +163,20 @@ curl -fsS http://localhost:8000/api/health
 
 ## Production configuration
 
-Set these in `.env` before `docker compose up -d --build`:
+The built-in Caddy profile handles HTTPS and same-domain routing. Set these in
+`.env`, then start the stack with the `proxy` profile:
 
 ```dotenv
+DOMAIN=buildtrack.example.com
+ACME_EMAIL=admin@example.com
+
 SPRING_PROFILES_ACTIVE=prod
 
-# Public HTTPS URLs of the deployed services
-CORS_ORIGINS=https://app.example.com
-VITE_API_URL=https://api.example.com
-VITE_AI_URL=https://ai.example.com
-AI_ALLOWED_ORIGINS=https://app.example.com
+# One public origin for the app, API and AI service
+CORS_ORIGINS=https://buildtrack.example.com
+AI_ALLOWED_ORIGINS=https://buildtrack.example.com
+VITE_API_URL=https://buildtrack.example.com
+VITE_AI_URL=https://buildtrack.example.com/ai
 
 # Email OTP (required in production)
 OTP_EMAIL_DELIVERY=EMAIL
@@ -154,20 +195,36 @@ MSG91_TEMPLATE_ID=...
 GEMINI_API_KEY=...
 ```
 
+```bash
+docker compose --profile proxy up -d --build
+# or: make prod-up
+docker compose logs -f caddy
+# or: make prod-logs
+DOMAIN="$(grep -m1 '^DOMAIN=' .env | cut -d= -f2-)"
+curl -fsS "https://$DOMAIN/api/health"
+curl -fsS "https://$DOMAIN/ai/api/health"
+# or: make prod-health
+```
+
 The `prod` profile refuses to start if:
 
 - `JWT_SECRET` or `OTP_SECRET` is shorter than 32 characters or still a development default.
 - `OTP_SECRET` is the same value as `JWT_SECRET`.
 - Either OTP delivery channel is still `CONSOLE`.
 
-Use a reverse proxy (Caddy, Nginx, Traefik, or your cloud load balancer) for HTTPS and to
-terminate TLS on ports 3000/8080/8000. Point the public hostnames at the proxy.
+If you use an external reverse proxy instead of the built-in Caddy profile, point it
+at `127.0.0.1:3000` (frontend), `127.0.0.1:8080` (API) and `127.0.0.1:8000` (AI),
+and set the public `VITE_*` URLs before building the frontend.
+
+See the full [production deployment guide](DEPLOYMENT.md) for server setup, DNS,
+firewall rules, backups, updates and rollback.
 
 ### Recommended hardening
 
-- Put the API and AI service behind the same reverse proxy; do not expose `8000` directly to the internet.
+- Only ports 22, 80 and 443 should be reachable from the internet.
 - Keep the database off the host network (the Compose file already does this).
-- Back up the `db-data` volume regularly.
+- Use the built-in [backup script](../deploy/backup-mysql.sh) and copy both the SQL
+  and uploads archives off-server.
 - If you set `AI_API_KEY`, either build the frontend with `VITE_AI_API_KEY` (the key is visible in the browser bundle) or, preferably, add the header in your reverse proxy.
 - Rotate `JWT_SECRET` / `OTP_SECRET` through your secret manager, not by editing the image.
 
@@ -194,8 +251,11 @@ Or use the Compose provider:
 make up COMPOSE="podman compose"
 ```
 
-Rootless Podman works because the published ports are above 1024. If your environment blocks
-rootless port binding, map `3000`, `8080`, and `8000` to different host ports in
+Rootless Podman works for the local stack because the published application ports are
+above 1024. Caddy needs ports 80/443, which rootless Podman cannot bind by default; use
+rootful Podman for the production proxy, or map Caddy to high ports such as
+`8080:80` and `8443:443` and put another TLS terminator in front. If your environment
+blocks rootless port binding, map `3000`, `8080`, and `8000` to different host ports in
 `docker-compose.yml`.
 
 > Podman's default OCI image format drops `HEALTHCHECK` directives. The Compose-level
@@ -226,7 +286,9 @@ Common causes:
 ss -ltnp | grep -E '3000|8080|8000'
 ```
 
-Change the left-hand side of the port mapping in `docker-compose.yml`.
+Change the host side of the port mapping in `docker-compose.yml`. Keep the
+`127.0.0.1:` prefix unless you intentionally want to expose that service on a
+public interface.
 
 **Reset the database**
 

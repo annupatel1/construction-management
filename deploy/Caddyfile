@@ -1,0 +1,50 @@
+# BuildTrack production reverse proxy.
+#
+# Caddy obtains and renews HTTPS certificates automatically, so the server only
+# needs ports 80 and 443 open and a DNS record pointing at it.
+#
+# Required environment variables (set in the repository .env):
+#   DOMAIN=buildtrack.example.com
+#   ACME_EMAIL=admin@example.com
+#
+# Start it with:
+#   docker compose --profile proxy up -d --build
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Backend REST API. The frontend is built with VITE_API_URL=https://DOMAIN.
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	# AI service. The frontend is built with VITE_AI_URL=https://DOMAIN/ai.
+	# handle_path strips the /ai prefix before forwarding:
+	#   /ai/api/health -> ai:8000/api/health
+	handle_path /ai/* {
+		reverse_proxy ai:8000
+	}
+
+	# Static React single-page app.
+	handle {
+		reverse_proxy frontend:80
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

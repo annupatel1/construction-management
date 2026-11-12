@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import { PublicOnly, RequireAuth, RequireRole } from './components/RouteGuards'
 
+import Landing from './pages/public/Landing'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import VerifyOtp from './pages/auth/VerifyOtp'
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/ai" element={<AIIntelligence />} />
 
       <Route element={<PublicOnly />}>
+        <Route path="/welcome" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify" element={<VerifyOtp />} />

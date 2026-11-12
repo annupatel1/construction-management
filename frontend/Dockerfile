@@ -10,9 +10,11 @@ COPY . .
 
 ARG VITE_API_URL=http://localhost:8080
 ARG VITE_AI_URL=http://localhost:8000
-ARG VITE_SUPPORT_EMAIL=support@buildtrack.example
+ARG VITE_AI_API_KEY=
+ARG VITE_SUPPORT_EMAIL=support@your-domain.example
 ENV VITE_API_URL=$VITE_API_URL \
     VITE_AI_URL=$VITE_AI_URL \
+    VITE_AI_API_KEY=$VITE_AI_API_KEY \
     VITE_SUPPORT_EMAIL=$VITE_SUPPORT_EMAIL
 
 RUN npm run build

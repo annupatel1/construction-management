@@ -17,6 +17,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 
 import java.time.LocalDateTime;
 
@@ -46,7 +48,24 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex) {
-        return build(HttpStatus.BAD_REQUEST, "Invalid request. Please check the values you sent");
+        // BadRequestException messages are written for the end user (for example
+        // "End date cannot be before start date" or "Only JPG, PNG or WebP images are supported").
+        String message = ex.getMessage();
+        return build(HttpStatus.BAD_REQUEST,
+                message == null || message.isBlank()
+                        ? "Invalid request. Please check the values you sent"
+                        : message);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        return build(HttpStatus.CONTENT_TOO_LARGE,
+                "Photo is too large. Please choose a smaller image and try again.");
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorResponse> handleMultipart(MultipartException ex) {
+        return build(HttpStatus.BAD_REQUEST, "The upload could not be read. Please choose an image and try again.");
     }
 
     @ExceptionHandler(ConflictException.class)

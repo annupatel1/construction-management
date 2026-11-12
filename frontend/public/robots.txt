@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Account and verification screens are not useful in search results.
+Disallow: /login
+Disallow: /register
+Disallow: /verify
+Disallow: /forgot-password
+
+# Public pages: /welcome, /privacy, /terms, /support

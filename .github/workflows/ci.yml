@@ -39,10 +39,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install and build frontend
+      - name: Install, test and build frontend
         working-directory: frontend
         run: |
           npm ci
+          npm test
           npm run build
 
   ai-platform:
@@ -76,8 +77,18 @@ jobs:
       - name: Prepare environment
         run: cp .env.example .env
 
-      - name: Validate Compose file
-        run: docker compose config --quiet
+      - name: Validate Compose files
+        run: |
+          docker compose config --quiet
+          docker compose --profile proxy config --quiet
+
+      - name: Validate Caddyfile
+        run: |
+          docker run --rm \
+            -e DOMAIN=buildtrack.example.com \
+            -e ACME_EMAIL=admin@example.com \
+            -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.8-alpine caddy validate --config /etc/caddy/Caddyfile
 
       - name: Build backend image
         run: docker build -t buildtrack-backend:ci ./backend

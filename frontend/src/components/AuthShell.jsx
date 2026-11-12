@@ -1,4 +1,5 @@
 import { HardHat, ShieldCheck, Wallet } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import Logo from './Logo'
 import LanguageToggle from './LanguageToggle'
 import LegalLinks from './LegalLinks'
@@ -14,7 +15,9 @@ export default function AuthShell({ title, subtitle, children, footer }) {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[1.05fr_1fr]">
       <div className="relative hidden flex-col justify-between bg-ink-900 p-12 text-white lg:flex">
-        <Logo light size="lg" />
+        <Link to="/welcome" aria-label="BuildTrack home" className="inline-flex w-fit">
+          <Logo light size="lg" />
+        </Link>
         <div>
           <h2 className="max-w-md text-3xl font-semibold leading-tight">
             {t('Run your construction sites from one simple app')}
@@ -35,7 +38,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
 
       <div className="flex min-h-screen flex-col px-5 py-6 sm:px-10">
         <div className="flex items-center justify-between lg:justify-end">
-          <div className="lg:hidden"><Logo /></div>
+          <Link to="/welcome" aria-label="BuildTrack home" className="inline-flex lg:hidden"><Logo /></Link>
           <LanguageToggle />
         </div>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-8">

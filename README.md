@@ -33,6 +33,8 @@ A production-oriented, full-stack construction management platform for **House O
 - Accept scoped project invitations with site access, without financial visibility
 
 **Platform**
+- Public landing page with pilot onboarding, feature overview and legal links
+- Phone-friendly site-photo uploads for daily progress reports and issue evidence
 - JWT authentication, OTP verification, account suspension, and token revocation
 - Audit trail for financial and status changes
 - In-app notifications, CSV exports, health probe, and request-id correlation
@@ -75,7 +77,36 @@ docker compose up -d --build
 | API health | http://localhost:8080/api/health |
 | AI service docs | http://localhost:8000/docs |
 
-> Compose uses `GEMINI_API_KEY` for live AI. Without it, every AI feature returns a clearly labelled demonstration result, so the UI remains fully usable. See the full [Docker guide](docs/DOCKER.md) for production, Podman, backups, and troubleshooting.
+> Compose uses `GEMINI_API_KEY` for live AI. Without it, every AI feature returns a clearly labelled demonstration result, so the UI remains fully usable. Uploaded site photos are stored in the `uploads-data` Docker volume. See the full [Docker guide](docs/DOCKER.md) for production, Podman, backups, and troubleshooting.
+
+---
+
+## Production deployment
+
+The repository includes a production kit with an optional Caddy reverse proxy for
+automatic HTTPS, localhost-only service ports, and backups for MySQL plus uploaded
+site photos.
+
+```bash
+# On the server, after setting DOMAIN, ACME_EMAIL and the public VITE_* URLs in .env:
+make prod-up
+# equivalent to: docker compose --profile proxy up -d --build
+
+make prod-health
+```
+
+The public traffic path is:
+
+```text
+Internet :80/:443
+   └── Caddy (automatic TLS)
+        ├── /api/*  -> backend:8080
+        ├── /ai/*   -> ai:8000      (the /ai prefix is stripped)
+        └── /*      -> frontend:80
+```
+
+See the full [production deployment guide](docs/DEPLOYMENT.md) for DNS, firewall,
+secrets, backups, updates, rollback and troubleshooting.
 
 ---
 
@@ -171,14 +202,17 @@ Run production with `SPRING_PROFILES_ACTIVE=prod`. The app refuses to start with
 # Backend: 28 integration/unit tests on H2 with real Flyway migrations
 cd backend && mvn verify
 
-# Frontend: production build
-cd frontend && npm ci && npm run build
+# Frontend: 9 unit tests + production build
+cd frontend && npm ci && npm test && npm run build
 
 # AI platform: unittest + FastAPI TestClient
 cd ai_platform && python test_suite.py
 ```
 
 CI runs all three on every push and pull request (`.github/workflows/ci.yml`).
+The frontend suite covers wage, overtime, project-finance and INR formatting
+helpers; backend integration tests cover the REST and money flows; the AI suite
+covers the FastAPI routes and demo fallbacks.
 
 ---
 
@@ -202,6 +236,9 @@ Fresh databases run `V1` plus vendor migrations. Existing databases are baseline
 - `AccessGuard` enforces project ownership and role scope on every service call.
 - CSV exports neutralise spreadsheet formula injection.
 - The production profile fails fast on weak secrets or console OTP delivery.
+- Production Compose binds the backend, AI and frontend to `127.0.0.1` only; the
+  database is never published. Public traffic enters through the TLS proxy.
+- Report vulnerabilities privately using [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -211,10 +248,13 @@ Fresh databases run `V1` plus vendor migrations. Existing databases are baseline
 - [Frontend guide](frontend/README.md)
 - [AI platform guide](ai_platform/README.md)
 - [Docker deployment guide](docs/DOCKER.md)
+- [Production deployment guide](docs/DEPLOYMENT.md)
 - [Pilot runbook](docs/PILOT_RUNBOOK.md)
+- [Security policy](SECURITY.md)
+- [Changelog](CHANGELOG.md)
 
 ---
 
 ## License
 
-Proprietary. All rights reserved unless a separate licence is agreed in writing.
+Proprietary. All rights reserved. See [LICENSE](LICENSE).

@@ -112,6 +112,35 @@ Then point a test backend at `${DB_NAME}_restore`, start it, and confirm:
 - [ ] One owner, one contractor, one labourer, and one engineer can log in (test accounts only).
 - [ ] A finance CSV export from the restored copy matches the source CSV.
 
+### Docker/Podman pilots
+
+Use the Compose-aware script instead of the manual dump above:
+
+```bash
+make backup
+# or, with an explicit destination and Podman:
+BACKUP_DIR=/secure/backups COMPOSE="podman compose" ./deploy/backup-mysql.sh
+```
+
+It writes both `buildtrack-<timestamp>.sql.gz` and
+`buildtrack-uploads-<timestamp>.tar.gz`. Verify both archives:
+
+```bash
+gzip -t /secure/backups/buildtrack-*.sql.gz
+gzip -t /secure/backups/buildtrack-uploads-*.tar.gz
+```
+
+For a restore drill, use a disposable copy of the stack. The photo restore replaces the
+volume contents; it does not merge:
+
+```bash
+docker compose exec -T backend sh -c 'rm -rf /app/uploads/* && tar -xzf - -C /app/uploads' \
+  < /secure/backups/buildtrack-uploads-<timestamp>.tar.gz
+```
+
+- [ ] A restored photo opens from its `/api/files/...` URL.
+- [ ] The progress report that references the photo still shows it in the UI.
+
 Store backups encrypted, keep at most 30 daily copies, and test a restore before every pilot
 milestone. Never restore over the live database during working hours.
 

@@ -46,10 +46,19 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
       LOGIN_MAX_ATTEMPTS: ${LOGIN_MAX_ATTEMPTS:-10}
       LOGIN_WINDOW_SECONDS: ${LOGIN_WINDOW_SECONDS:-900}
+      # Site photos are stored in the uploads-data volume.
+      UPLOAD_DIR: /app/uploads
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-10485760}
+      UPLOAD_MAX_FILE_SIZE: ${UPLOAD_MAX_FILE_SIZE:-10MB}
+      UPLOAD_MAX_REQUEST_SIZE: ${UPLOAD_MAX_REQUEST_SIZE:-12MB}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       PORT: 8080
+    # Reachable on the host only through localhost. In production, Caddy
+    # proxies public HTTPS traffic to this service on the Compose network.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - uploads-data:/app/uploads
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/health"]
       interval: 30s
@@ -70,7 +79,7 @@ services:
       AI_ALLOWED_ORIGINS: ${AI_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
       AI_API_KEY: ${AI_API_KEY:-}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
       interval: 30s
@@ -88,15 +97,14 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
         VITE_AI_URL: ${VITE_AI_URL:-http://localhost:8000}
-        VITE_SUPPORT_EMAIL: ${VITE_SUPPORT_EMAIL:-support@buildtrack.example}
+        VITE_AI_API_KEY: ${VITE_AI_API_KEY:-}
+        VITE_SUPPORT_EMAIL: ${VITE_SUPPORT_EMAIL:-support@your-domain.example}
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
-      ai:
-        condition: service_healthy
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
       interval: 30s
@@ -106,5 +114,34 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Optional production TLS reverse proxy. It is not started by `make up`.
+  # Start it with:
+  #   docker compose --profile proxy up -d --build
+  # after setting DOMAIN and ACME_EMAIL in .env.
+  caddy:
+    image: docker.io/library/caddy:2.8-alpine
+    profiles: ["proxy"]
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   db-data:
+  uploads-data:
+  caddy-data:
+  caddy-config:

@@ -37,6 +37,14 @@ venv/
 /tmp/
 .DS_Store
 
+# Local database backups
+/backups/
+*.sql.gz
+
+# Locally stored site photo uploads (Docker uses the uploads-data volume)
+/uploads/
+/backend/uploads/
+
 # JAR/WAR archives
 *.jar
 *.war

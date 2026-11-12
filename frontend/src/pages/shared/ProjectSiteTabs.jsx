@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle, Calendar, Camera, CheckCircle2, ClipboardList, Clock, Flag,
   MessageSquare, Pencil, Plus, Send, Trash2,
@@ -48,16 +48,79 @@ function PhotoGrid({ photos }) {
   )
 }
 
-function PhotoFields({ photos, onChange, t, withDate = false }) {
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024
+
+function PhotoUploadButton({ projectId, onUploaded, t, label }) {
+  const inputRef = useRef(null)
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+
+  const pickFile = () => {
+    if (!busy) inputRef.current?.click()
+  }
+
+  const upload = async (event) => {
+    const file = event.target.files?.[0]
+    // Allow picking the same file again after an error.
+    event.target.value = ''
+    if (!file) return
+
+    // Some mobile browsers omit the MIME type. Let the backend inspect the bytes.
+    const looksLikeImage = !file.type || ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+    if (!looksLikeImage) {
+      toast.error(t('Only JPG, PNG or WebP images are supported.'))
+      return
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      toast.error(t('Image is too large. Maximum size is 10 MB.'))
+      return
+    }
+
+    setBusy(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const { data } = await api.post(`/api/projects/${projectId}/files`, formData)
+      onUploaded(data.url)
+      toast.success(t('Photo uploaded'))
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp"
+        className="hidden" onChange={upload} disabled={busy} />
+      <Button type="button" size="sm" variant="secondary" onClick={pickFile} loading={busy}>
+        {!busy && <Camera className="h-4 w-4" />}
+        {busy ? t('Uploading…') : (label || t('Upload photo'))}
+      </Button>
+    </>
+  )
+}
+
+function PhotoFields({ photos, onChange, t, withDate = false, projectId }) {
   const update = (index, key, value) => {
     onChange(photos.map((photo, i) => i === index ? { ...photo, [key]: value } : photo))
   }
   const remove = (index) => onChange(photos.filter((_, i) => i !== index))
+  const add = (photoUrl = '') => onChange([...photos, withDate
+    ? { photoUrl, caption: '', takenDate: todayISO() }
+    : { photoUrl, caption: '' }])
+  const atLimit = photos.length >= 10
   return (
     <div className="space-y-2">
       {photos.map((photo, index) => (
         <div key={index} className="space-y-2 rounded-xl border border-ink-200 bg-ink-50/60 p-2.5">
           <div className="flex items-start gap-2">
+            {photo.photoUrl && (
+              <img key={photo.photoUrl} src={photo.photoUrl} alt="" loading="lazy"
+                onError={(event) => { event.currentTarget.style.display = 'none' }}
+                className="h-11 w-11 shrink-0 rounded-lg border border-ink-200 object-cover" />
+            )}
             <Input value={photo.photoUrl || ''} onChange={(e) => update(index, 'photoUrl', e.target.value)}
               placeholder="https://… photo link" aria-label={t('Photo URL')} />
             <Button type="button" size="sm" variant="ghost" onClick={() => remove(index)} aria-label={t('Remove photo')}>
@@ -74,12 +137,15 @@ function PhotoFields({ photos, onChange, t, withDate = false }) {
           </div>
         </div>
       ))}
-      <Button type="button" size="sm" variant="secondary"
-        onClick={() => onChange([...photos, withDate
-          ? { photoUrl: '', caption: '', takenDate: todayISO() }
-          : { photoUrl: '', caption: '' }])}>
-        <Camera className="h-4 w-4" /> {t('Add photo link')}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" variant="secondary" onClick={() => add()} disabled={atLimit}>
+          <Camera className="h-4 w-4" /> {t('Add photo link')}
+        </Button>
+        {projectId && !atLimit ? (
+          <PhotoUploadButton projectId={projectId} onUploaded={add} t={t} />
+        ) : null}
+        {atLimit ? <span className="text-xs text-ink-500">{t('Maximum 10 photos.')}</span> : null}
+      </div>
     </div>
   )
 }
@@ -325,8 +391,8 @@ function ReportModal({ open, report, project, role, onClose, onSaved }) {
           onChange={(e) => update('nextDayPlan', e.target.value)} />
         <div>
           <p className="mb-1.5 text-sm font-medium text-ink-700">{t('Photos')}</p>
-          <PhotoFields photos={form.photos} onChange={(photos) => update('photos', photos)} t={t} withDate />
-          <p className="mt-1 text-xs text-ink-500">{t('Paste a link to a dated site photo. Up to 10 photos per report.')}</p>
+          <PhotoFields photos={form.photos} onChange={(photos) => update('photos', photos)} t={t} withDate projectId={project.id} />
+          <p className="mt-1 text-xs text-ink-500">{t('Upload a photo from your phone or paste a link. Up to 10 photos per report.')}</p>
         </div>
       </div>
     </Modal>
@@ -809,8 +875,8 @@ function IssueModal({ open, project, people, onClose, onSaved }) {
           onChange={(e) => update('dueDate', e.target.value)} />
         <div>
           <p className="mb-1.5 text-sm font-medium text-ink-700">{t('Photos')}</p>
-          <PhotoFields photos={form.photos} onChange={(photos) => update('photos', photos)} t={t} />
-          <p className="mt-1 text-xs text-ink-500">{t('Paste links to photos of the issue. Up to 10 photos.')}</p>
+          <PhotoFields photos={form.photos} onChange={(photos) => update('photos', photos)} t={t} projectId={project.id} />
+          <p className="mt-1 text-xs text-ink-500">{t('Upload a photo of the issue or paste a link. Up to 10 photos.')}</p>
         </div>
       </div>
     </Modal>
@@ -909,8 +975,13 @@ function IssueDetailModal({ open, issue, project, role, onClose, onChange }) {
                 <>
                   <Textarea label={t('Resolution note')} value={resolutionNote}
                     onChange={(e) => setResolutionNote(e.target.value)} required />
-                  <Input label={t('Resolution photo link')} value={resolutionPhotoUrl}
-                    onChange={(e) => setResolutionPhotoUrl(e.target.value)} placeholder="https://…" />
+                  <div className="flex items-end gap-2">
+                    <Input label={t('Resolution photo')} value={resolutionPhotoUrl}
+                      onChange={(e) => setResolutionPhotoUrl(e.target.value)} placeholder="https://…"
+                      className="min-w-0 flex-1" />
+                    <PhotoUploadButton projectId={project.id} onUploaded={setResolutionPhotoUrl}
+                      t={t} label={t('Upload')} />
+                  </div>
                 </>
               )}
               <Button size="sm" onClick={updateStatus} loading={busy}>{t('Update status')}</Button>

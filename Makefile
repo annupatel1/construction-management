@@ -9,6 +9,7 @@ COMPOSE ?= docker compose
 PODMAN_COMPOSE ?= $(shell command -v podman-compose >/dev/null 2>&1 && echo podman-compose || echo podman compose)
 
 .PHONY: help env build up down restart logs ps health test clean \
+        prod-up prod-down prod-ps prod-logs prod-health backup \
         podman-build podman-up podman-down podman-logs
 
 help:
@@ -25,6 +26,14 @@ help:
 	@echo "  make test         Run backend, frontend and AI tests locally"
 	@echo "  make clean        Remove local build output (not the database volume)"
 	@echo ""
+	@echo "  Production (Caddy HTTPS profile):"
+	@echo "  make prod-up      Build and start the stack with automatic HTTPS"
+	@echo "  make prod-down    Stop the production stack"
+	@echo "  make prod-ps      Show production service status"
+	@echo "  make prod-logs    Follow production logs"
+	@echo "  make prod-health  Check the public HTTPS health endpoints"
+	@echo "  make backup       Back up MySQL and uploaded photos to ./backups"
+	@echo ""
 	@echo "  Podman: make up COMPOSE=\"podman compose\""
 	@echo "          make podman-up / make podman-down"
 
@@ -36,7 +45,7 @@ build:
 
 up:
 	@if [ ! -f .env ]; then ./scripts/generate-env.sh; fi
-	$(COMPOSE) up -d --build
+	env -u SPRING_PROFILES_ACTIVE $(COMPOSE) up -d --build
 
 down:
 	$(COMPOSE) down
@@ -58,9 +67,33 @@ health:
 	@curl -fsS http://localhost:8000/api/health || echo "AI service is not healthy"
 	@echo
 
+prod-up:
+	@if [ ! -f .env ]; then ./scripts/generate-env.sh; fi
+	@if ! grep -q '^DOMAIN=.' .env; then echo "Set DOMAIN in .env before make prod-up" >&2; exit 1; fi
+	@if ! grep -q '^ACME_EMAIL=.' .env; then echo "Set ACME_EMAIL in .env before make prod-up" >&2; exit 1; fi
+	env -u SPRING_PROFILES_ACTIVE $(COMPOSE) --profile proxy up -d --build
+
+prod-down:
+	$(COMPOSE) --profile proxy down
+
+prod-ps:
+	$(COMPOSE) --profile proxy ps
+
+prod-logs:
+	$(COMPOSE) --profile proxy logs -f --tail=200
+
+prod-health:
+	@DOMAIN=$$(grep -m1 '^DOMAIN=' .env | cut -d= -f2-); \
+	if [ -z "$$DOMAIN" ]; then echo "Set DOMAIN in .env" >&2; exit 1; fi; \
+	echo "Backend:"; curl -fsS "https://$$DOMAIN/api/health"; echo; \
+	echo "AI service:"; curl -fsS "https://$$DOMAIN/ai/api/health"; echo
+
+backup:
+	./deploy/backup-mysql.sh
+
 test:
 	cd backend && JAVA_HOME=$${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk} ./mvnw verify
-	cd frontend && npm run build
+	cd frontend && npm test && npm run build
 	cd ai_platform && python3 test_suite.py
 
 clean:
@@ -71,7 +104,7 @@ podman-build:
 
 podman-up:
 	@if [ ! -f .env ]; then ./scripts/generate-env.sh; fi
-	$(PODMAN_COMPOSE) up -d --build
+	env -u SPRING_PROFILES_ACTIVE $(PODMAN_COMPOSE) up -d --build
 
 podman-down:
 	$(PODMAN_COMPOSE) down

@@ -87,7 +87,9 @@ public class SecurityConfig {
                                 writeJson(res, HttpServletResponse.SC_FORBIDDEN,
                                         "You don't have permission to perform this action")))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/health", "/error").permitAll()
+                        // Uploaded site photos are public-by-URL (random UUID) so the browser
+                        // can render them without putting a JWT in an image request.
+                        .requestMatchers("/api/auth/**", "/api/health", "/api/files/**", "/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
