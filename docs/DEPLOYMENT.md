@@ -367,7 +367,8 @@ if you need a SQL client.
 - [ ] MySQL has no host port; backend, AI and frontend bind to `127.0.0.1` only.
 - [ ] `SPRING_PROFILES_ACTIVE=prod` and strong, distinct secrets.
 - [ ] `CORS_ORIGINS` and `AI_ALLOWED_ORIGINS` contain only real frontend origins.
-- [ ] Real SMTP/SMS delivery is tested end to end.
+- [ ] Free email OTP (SMTP) delivery is tested end to end. SMS is optional and paid.
+- [ ] `make prod-check` passes against the production `.env`.
 - [ ] HTTPS works and HSTS is present; HTTP redirects to HTTPS.
 - [ ] Daily off-server backups and a tested restore.
 - [ ] Uptime and error monitoring with an alert destination.

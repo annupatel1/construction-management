@@ -173,7 +173,7 @@ Record the date, operator, and row counts in the pilot operations log.
 Severity:
 
 - **S1** — suspected data breach, exposed secrets, widespread outage, or wrong-user data exposure.
-- **S2** — one project's finance/attendance is wrong, an OTP/SMS outage, or a role check failure.
+- **S2** — one project's finance/attendance is wrong, an OTP delivery outage, or a role check failure.
 - **S3** — cosmetic issue or single-user support request.
 
 For S1/S2:

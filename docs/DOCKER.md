@@ -60,7 +60,8 @@ Open:
 
 In this default setup:
 
-- OTP codes are printed in the backend logs (`OTP_*_DELIVERY=CONSOLE`).
+- Free email OTP codes are printed in the backend logs (`OTP_EMAIL_DELIVERY=CONSOLE`).
+  Phone/SMS OTP is disabled by default (`OTP_PHONE_DELIVERY=DISABLED`).
 - AI runs in deterministic demo mode until `GEMINI_API_KEY` is set.
 - The database is reachable only inside the Compose network.
 - Site photos are written to the `uploads-data` volume, not inside the image.
