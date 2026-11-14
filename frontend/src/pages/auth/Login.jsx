@@ -20,6 +20,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [otpStep, setOtpStep] = useState(false)
   const [otp, setOtp] = useState('')
+  const [sentTo, setSentTo] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [left, restart] = useCountdown(0)
@@ -29,6 +30,10 @@ export default function Login() {
     setError('')
     setOtpStep(false)
     setOtp('')
+    setSentTo('')
+    if (m === 'otp' && identifier && !identifier.includes('@')) {
+      setIdentifier('')
+    }
   }
 
   const submitPassword = async (e) => {
@@ -62,6 +67,7 @@ export default function Login() {
       const { data } = await api.post('/api/auth/login-otp/request', { identifier: identifier.trim() })
       setOtpStep(true)
       setOtp('')
+      setSentTo(data.sentTo || identifier.trim())
       restart(data.resendAfterSeconds || 30)
     } catch (err) {
       setError(errorMessage(err))
@@ -119,16 +125,17 @@ export default function Login() {
 
       {mode === 'otp' && !otpStep && (
         <form onSubmit={requestOtp} className="space-y-4">
-          <Input label={t('Mobile number or email')} value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)} placeholder="98765 43210 or you@example.com" required
-            hint={t("We'll send a 6-digit code. Email works only if it is verified.")} />
+          <Input label={t('Email address')} type="email" value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)} placeholder="you@example.com"
+            autoComplete="email" required
+            hint={t('We email a free 6-digit code. Use the email on your account.')} />
           <Button type="submit" size="lg" className="w-full" loading={busy}>{t('Send code')}</Button>
         </form>
       )}
 
       {mode === 'otp' && otpStep && (
         <form onSubmit={verifyOtp} className="space-y-5">
-          <p className="text-center text-sm text-ink-600">{t('Enter the 6-digit code sent to')} <b>{identifier}</b></p>
+          <p className="text-center text-sm text-ink-600">{t('Enter the 6-digit code sent to')} <b>{sentTo || identifier}</b></p>
           <OtpInput value={otp} onChange={setOtp} />
           {import.meta.env.DEV && (
             <p className="text-center text-xs text-ink-400">Dev mode: the code is printed in the backend console.</p>

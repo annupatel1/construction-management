@@ -9,6 +9,12 @@ All notable changes to BuildTrack are documented here. The format is based on
 
 - Public marketing landing page at `/welcome` with features, roles, AI overview,
   pilot pricing, FAQ, legal links and support contact.
+- Free email OTP is now the default verification channel. A user who enters a
+  mobile number for OTP login or password reset still receives the code at the
+  email on their account. Phone/SMS OTP is optional and disabled unless MSG91 is
+  configured.
+- `make prod-check` / `scripts/prod-preflight.sh` validates domain, URLs, secrets
+  and email/SMTP settings before a production deployment.
 - Phone-friendly site-photo uploads for daily progress reports and issue evidence,
   with project-scoped authorization, JPEG/PNG/WebP validation, a 10 MB limit and a
   persistent `uploads-data` Docker volume.

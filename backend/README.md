@@ -82,12 +82,15 @@ Start with `SPRING_PROFILES_ACTIVE=prod` and provide the environment variables r
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | MySQL connection |
 | `JWT_SECRET` | 32+ character HMAC key |
 | `OTP_SECRET` | 32+ character OTP hashing key |
-| `OTP_PHONE_DELIVERY`, `OTP_EMAIL_DELIVERY` | `SMS` / `EMAIL`, never `CONSOLE` |
-| `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | SMS delivery |
-| `SPRING_MAIL_*`, `MAIL_FROM` | SMTP delivery |
+| `OTP_EMAIL_DELIVERY` | `EMAIL` (required; email OTP is free) |
+| `OTP_PHONE_DELIVERY` | `DISABLED` (default) or `SMS` (optional, paid) |
+| `SPRING_MAIL_*`, `MAIL_FROM` | SMTP delivery for email OTP |
+| `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | Optional SMS delivery |
 | `CORS_ORIGINS` | Comma-separated frontend origins |
 
-`ProductionConfigCheck` fails startup if secrets are weak or console OTP delivery is enabled.
+`ProductionConfigCheck` fails startup if secrets are weak/reused, email OTP is not
+`EMAIL`, SMTP settings are missing, or phone OTP is set to `CONSOLE`. Phone OTP is
+optional; email OTP is the required free channel.
 
 ## Security and data integrity baseline
 

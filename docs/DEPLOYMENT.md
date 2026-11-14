@@ -19,8 +19,8 @@ For local development, use `make up`. For staging/pilot sign-off, use
 - A domain name with a DNS **A record** (and AAAA if you use IPv6) pointing at the
   server's public IP.
 - Ports **22, 80 and 443** open. Do not expose 3000, 8080, 8000 or 3306 publicly.
-- Real SMTP credentials and, if you use phone OTP, MSG91 credentials with an
-  approved DLT template.
+- A free mailbox or transactional email account for OTP delivery (Gmail App
+  Password or a free SMTP provider). Phone/SMS OTP is optional and paid.
 
 > First-time TLS tip: keep the DNS record **DNS-only** (grey cloud in Cloudflare)
 > until Caddy has issued the certificate. A proxied Cloudflare record can block the
@@ -104,17 +104,19 @@ VITE_API_URL=https://buildtrack.your-domain.example
 VITE_AI_URL=https://buildtrack.your-domain.example/ai
 VITE_SUPPORT_EMAIL=support@your-domain.example
 
-OTP_PHONE_DELIVERY=SMS
+# Free email OTP (required)
 OTP_EMAIL_DELIVERY=EMAIL
-
-MSG91_AUTH_KEY=...
-MSG91_TEMPLATE_ID=...
-
-SPRING_MAIL_HOST=smtp.your-provider.example
+SPRING_MAIL_HOST=smtp.gmail.com
 SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=...
-SPRING_MAIL_PASSWORD=...
-MAIL_FROM=no-reply@your-domain.example
+SPRING_MAIL_USERNAME=you@gmail.com
+SPRING_MAIL_PASSWORD=your-16-character-app-password
+MAIL_FROM=you@gmail.com
+
+# Phone/SMS OTP (optional and paid; MSG91 with an approved DLT template)
+OTP_PHONE_DELIVERY=DISABLED
+# OTP_PHONE_DELIVERY=SMS
+# MSG91_AUTH_KEY=...
+# MSG91_TEMPLATE_ID=...
 
 GEMINI_API_KEY=...
 ```
@@ -127,8 +129,16 @@ Notes:
   only if you also test from your laptop against the production API.
 - `VITE_*` values are **baked into the frontend at build time**. After changing
   them you must rebuild the frontend image.
-- The `prod` Spring profile rejects weak secrets, reused JWT/OTP secrets and
-  `CONSOLE` OTP delivery.
+- **Email OTP is free and required.** A Gmail account with 2-Step Verification and
+  a 16-character App Password is enough for a pilot. Brevo and other free
+  transactional providers also work; use their SMTP host, port and credentials.
+- **Phone/SMS OTP is optional and paid.** Leave `OTP_PHONE_DELIVERY=DISABLED`
+  unless you have an approved MSG91 DLT template. Users can still register and
+  log in with their email.
+- The `prod` Spring profile rejects weak secrets, reused JWT/OTP secrets,
+  `CONSOLE` OTP delivery and missing SMTP settings.
+- Run `make prod-check` before starting. It validates the domain, URLs, secrets,
+  email/SMTP settings and optional SMS settings.
 - Without `GEMINI_API_KEY`, the AI service runs in clearly labelled demo mode.
 - Never commit `.env`. It is ignored by Git.
 
@@ -137,6 +147,7 @@ Notes:
 ## 5. Start the stack with HTTPS
 
 ```bash
+make prod-check
 docker compose --profile proxy up -d --build
 # or, from the repository root:
 make prod-up
@@ -319,13 +330,19 @@ trailing slash. Restart the backend after changing it:
 docker compose up -d backend
 ```
 
-**OTP email or SMS is not delivered**
+**OTP email is not delivered**
 
 - `SPRING_PROFILES_ACTIVE=prod` rejects console delivery. Set
-  `OTP_EMAIL_DELIVERY=EMAIL` or `OTP_PHONE_DELIVERY=SMS`.
-- Check `SPRING_MAIL_*`, `MAIL_FROM`, `MSG91_AUTH_KEY` and `MSG91_TEMPLATE_ID`.
+  `OTP_EMAIL_DELIVERY=EMAIL` and fill `SPRING_MAIL_*` and `MAIL_FROM`.
+- For Gmail, enable 2-Step Verification and use a 16-character App Password.
 - Check the provider dashboard and the backend logs for a rejected request.
 - Confirm SPF, DKIM and DMARC for the sending domain.
+
+**Phone OTP is not delivered**
+
+- Phone OTP is disabled by default. Set `OTP_PHONE_DELIVERY=SMS` and provide
+  `MSG91_AUTH_KEY` and `MSG91_TEMPLATE_ID` with an approved DLT template.
+- If you do not need SMS, leave it disabled; email OTP is free and fully supported.
 
 **AI always returns demo results**
 

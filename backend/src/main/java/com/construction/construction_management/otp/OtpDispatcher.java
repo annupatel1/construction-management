@@ -1,6 +1,7 @@
 package com.construction.construction_management.otp;
 
 import com.construction.construction_management.entity.OtpPurpose;
+import com.construction.construction_management.exception.BadRequestException;
 import com.construction.construction_management.exception.OtpDeliveryException;
 import com.construction.construction_management.util.Identifier;
 import jakarta.annotation.PostConstruct;
@@ -15,9 +16,10 @@ import org.springframework.web.client.RestClient;
 
 /**
  * Delivers an OTP. How it is delivered is decided purely by configuration:
- *   otp.delivery.phone = CONSOLE | SMS      (SMS uses MSG91)
- *   otp.delivery.email = CONSOLE | EMAIL    (EMAIL uses SMTP)
- * CONSOLE prints the code in the server log - for development only.
+ *   otp.delivery.phone = DISABLED | SMS | CONSOLE   (SMS uses MSG91; email is free)
+ *   otp.delivery.email = EMAIL | CONSOLE
+ * Email is the default because it is free. CONSOLE prints the code in the server log
+ * and is for development only.
  */
 @Component
 public class OtpDispatcher {
@@ -32,7 +34,7 @@ public class OtpDispatcher {
     private final ObjectProvider<JavaMailSender> mailSender;
     private final RestClient restClient = RestClient.create();
 
-    public OtpDispatcher(@Value("${otp.delivery.phone:CONSOLE}") String phoneMode,
+    public OtpDispatcher(@Value("${otp.delivery.phone:DISABLED}") String phoneMode,
                          @Value("${otp.delivery.email:CONSOLE}") String emailMode,
                          @Value("${otp.mail.from:no-reply@localhost}") String mailFrom,
                          @Value("${otp.sms.msg91.auth-key:}") String msg91AuthKey,
@@ -58,14 +60,21 @@ public class OtpDispatcher {
         if (to.email()) {
             if ("EMAIL".equals(emailMode)) {
                 sendEmail(to.value(), purpose, code, expiryMinutes);
-            } else {
+            } else if ("CONSOLE".equals(emailMode)) {
                 printToConsole(to, purpose, code);
+            } else {
+                throw new OtpDeliveryException("Email OTP delivery is not configured");
             }
         } else {
             if ("SMS".equals(phoneMode)) {
                 sendSms(to.value(), code, expiryMinutes);
-            } else {
+            } else if ("CONSOLE".equals(phoneMode)) {
                 printToConsole(to, purpose, code);
+            } else if ("DISABLED".equals(phoneMode)) {
+                throw new BadRequestException(
+                        "Phone OTP is not enabled. Please use the email address on your account.");
+            } else {
+                throw new OtpDeliveryException("Phone OTP delivery is not configured");
             }
         }
     }

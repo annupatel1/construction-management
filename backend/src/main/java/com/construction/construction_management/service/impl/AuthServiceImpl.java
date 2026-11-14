@@ -65,6 +65,16 @@ public class AuthServiceImpl implements AuthService {
         return new OtpSentResponse(message, to.masked(), otpService.expirySeconds(), otpService.cooldownSeconds());
     }
 
+    /**
+     * When a caller typed a phone number, the code is delivered to the email on file.
+     * Do not echo that email back: it would let an attacker test whether a phone number
+     * is registered. Callers who typed an email already know their own address.
+     */
+    private OtpSentResponse sent(String message, Identifier destination, Identifier entered) {
+        String sentTo = entered.email() ? destination.masked() : "the email on your account";
+        return new OtpSentResponse(message, sentTo, otpService.expirySeconds(), otpService.cooldownSeconds());
+    }
+
     private AuthResponse authResponse(User user, String message) {
         if (user.getAccountStatus() != AccountStatus.ACTIVE) {
             throw new BadCredentialsException("Invalid credentials");
@@ -75,6 +85,28 @@ public class AuthServiceImpl implements AuthService {
 
     private Optional<User> find(Identifier id) {
         return id.email() ? userRepository.findByEmail(id.value()) : userRepository.findByPhone(id.value());
+    }
+
+    /**
+     * Email OTP is free, so it is the preferred destination. If a user types a mobile
+     * number and has an email on file, the code still goes to their email. Registration
+     * prefers any email on file; login and password reset prefer a verified email and
+     * fall back to the phone only when SMS is enabled.
+     */
+    private Identifier otpDestination(Identifier entered, boolean forRegistration) {
+        User user = find(entered).orElse(null);
+        if (user == null) {
+            return entered;
+        }
+        String email = user.getEmail();
+        if (email != null && !email.isBlank() && (forRegistration || user.isEmailVerified())) {
+            try {
+                return Identifier.email(email);
+            } catch (BadRequestException ignored) {
+                // A malformed legacy email should not block the identifier the user typed.
+            }
+        }
+        return entered;
     }
 
     /** A user may use an identifier for OTP login / reset only if that identifier is verified. */
@@ -154,11 +186,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(noRollbackFor = BadRequestException.class)
     public AuthResponse verifyRegistration(VerifyOtpRequest request) {
         Identifier id = Identifier.parse(request.getIdentifier());
-        otpService.verify(id, OtpPurpose.REGISTER, request.getOtp());
+        Identifier destination = otpDestination(id, true);
+        otpService.verify(destination, OtpPurpose.REGISTER, request.getOtp());
 
-        User user = find(id)
+        User user = find(destination)
                 .orElseThrow(() -> new BadRequestException("Invalid or expired code. Please request a new one."));
-        if (id.email()) {
+        if (destination.email()) {
             user.setEmailVerified(true);
         } else {
             user.setPhoneVerified(true);
@@ -171,11 +204,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public OtpSentResponse resendRegistrationOtp(OtpRequest request) {
         Identifier id = Identifier.parse(request.getIdentifier());
+        Identifier destination = otpDestination(id, true);
         boolean pending = find(id)
-                .map(u -> id.email() ? !u.isEmailVerified() : !u.isPhoneVerified())
+                .map(u -> destination.email() ? !u.isEmailVerified() : !u.isPhoneVerified())
                 .orElse(false);
-        otpService.issue(id, OtpPurpose.REGISTER, pending);
-        return sent(GENERIC_SENT, id);
+        otpService.issue(destination, OtpPurpose.REGISTER, pending);
+        return sent(GENERIC_SENT, destination, id);
     }
 
     // ------------------------------------------------------------ password login
@@ -225,10 +259,11 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(noRollbackFor = BadRequestException.class)
     public AuthResponse verifyLoginOtp(VerifyOtpRequest request) {
         Identifier id = Identifier.parse(request.getIdentifier());
-        otpService.verify(id, OtpPurpose.LOGIN, request.getOtp());
+        Identifier destination = otpDestination(id, false);
+        otpService.verify(destination, OtpPurpose.LOGIN, request.getOtp());
 
-        User user = find(id)
-                .filter(u -> eligible(u, id))
+        User user = find(destination)
+                .filter(u -> eligible(u, destination))
                 .orElseThrow(() -> new BadRequestException("Invalid or expired code. Please request a new one."));
         return authResponse(user, "Login successful");
     }
@@ -245,10 +280,11 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(noRollbackFor = BadRequestException.class)
     public MessageResponse resetPassword(ResetPasswordRequest request) {
         Identifier id = Identifier.parse(request.getIdentifier());
-        otpService.verify(id, OtpPurpose.RESET_PASSWORD, request.getOtp());
+        Identifier destination = otpDestination(id, false);
+        otpService.verify(destination, OtpPurpose.RESET_PASSWORD, request.getOtp());
 
-        User user = find(id)
-                .filter(u -> eligible(u, id))
+        User user = find(destination)
+                .filter(u -> eligible(u, destination))
                 .orElseThrow(() -> new BadRequestException("Invalid or expired code. Please request a new one."));
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         // a password reset must also log out every old session
@@ -263,9 +299,10 @@ public class AuthServiceImpl implements AuthService {
      */
     private OtpSentResponse sendIfEligible(OtpRequest request, OtpPurpose purpose) {
         Identifier id = Identifier.parse(request.getIdentifier());
-        boolean deliver = find(id).map(u -> eligible(u, id)).orElse(false);
-        otpService.issue(id, purpose, deliver);
-        return sent(GENERIC_SENT, id);
+        Identifier destination = otpDestination(id, false);
+        boolean deliver = find(destination).map(u -> eligible(u, destination)).orElse(false);
+        otpService.issue(destination, purpose, deliver);
+        return sent(GENERIC_SENT, destination, id);
     }
 
     @Override

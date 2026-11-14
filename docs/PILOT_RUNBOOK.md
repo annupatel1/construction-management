@@ -19,8 +19,10 @@ VITE_SUPPORT_EMAIL=support@your-domain.example
 - [ ] `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` point at the pilot database; the app user is not
       `root`.
 - [ ] `CORS_ORIGINS` contains only the real frontend origin(s).
-- [ ] SMS/email OTP delivery is configured (`OTP_PHONE_DELIVERY=SMS`, `OTP_EMAIL_DELIVERY=EMAIL`);
-      console OTP is rejected by the production profile.
+- [ ] Free email OTP is configured (`OTP_EMAIL_DELIVERY=EMAIL`, `SPRING_MAIL_*`, `MAIL_FROM`);
+      `OTP_PHONE_DELIVERY=DISABLED` unless paid SMS/MSG91 is intentionally enabled. Console OTP
+      is rejected by the production profile.
+- [ ] `make prod-check` passes against the production `.env`.
 - [ ] `VITE_API_URL` points at the HTTPS API; `VITE_SUPPORT_EMAIL` is a monitored inbox.
 - [ ] HTTPS is terminated in front of the API and frontend; HSTS is enabled at the proxy.
 - [ ] A database backup has run successfully and a restore has been tested (section 4).

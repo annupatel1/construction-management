@@ -14,6 +14,7 @@ export default function ForgotPassword() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [identifier, setIdentifier] = useState('')
+  const [sentTo, setSentTo] = useState('')
   const [otp, setOtp] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [error, setError] = useState('')
@@ -24,8 +25,10 @@ export default function ForgotPassword() {
     e?.preventDefault()
     setError(''); setBusy(true)
     try {
-      const { data } = await api.post('/api/auth/forgot-password', { identifier })
-      setStep(2); restart(data.resendAfterSeconds || 30)
+      const { data } = await api.post('/api/auth/forgot-password', { identifier: identifier.trim() })
+      setStep(2)
+      setSentTo(data.sentTo || '')
+      restart(data.resendAfterSeconds || 30)
     } catch (err) { setError(errorMessage(err)) } finally { setBusy(false) }
   }
 
@@ -33,7 +36,7 @@ export default function ForgotPassword() {
     e.preventDefault()
     setError(''); setBusy(true)
     try {
-      await api.post('/api/auth/reset-password', { identifier, otp, newPassword })
+      await api.post('/api/auth/reset-password', { identifier: identifier.trim(), otp, newPassword })
       toast.success(t('Password changed. You can now log in with your new password.'))
       navigate('/login', { replace: true })
     } catch (err) { setError(errorMessage(err)) } finally { setBusy(false) }
@@ -42,21 +45,25 @@ export default function ForgotPassword() {
   return (
     <AuthShell
       title={t('Reset your password')}
-      subtitle={step === 1 ? t("Enter your mobile number or verified email and we'll send a code") : t('Enter the code and choose a new password')}
+      subtitle={step === 1 ? t("Enter your account email and we'll send a free code") : t('Enter the code and choose a new password')}
       footer={<Link to="/login" className="font-medium text-brand-700 hover:underline">{t('Back to log in')}</Link>}
     >
       {error && <Alert className="mb-4">{error}</Alert>}
 
       {step === 1 ? (
         <form onSubmit={sendCode} className="space-y-4">
-          <Input label={t('Mobile number or email')} value={identifier} onChange={(e) => setIdentifier(e.target.value)}
-            placeholder="98765 43210" required />
+          <Input label={t('Email address')} type="email" value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)} placeholder="you@example.com"
+            autoComplete="email" required
+            hint={t('We email a free 6-digit code. Use the email on your account.')} />
           <Button type="submit" size="lg" className="w-full" loading={busy}>{t('Send code')}</Button>
         </form>
       ) : (
         <form onSubmit={reset} className="space-y-5">
           <p className="text-center text-sm text-ink-600">
-            {t('If this account exists, a code has been sent.')}
+            {sentTo
+              ? t('If this account exists, a code was sent to {to}.', { to: sentTo })
+              : t('If this account exists, a code has been sent.')}
           </p>
           <OtpInput value={otp} onChange={setOtp} />
           {import.meta.env.DEV && (

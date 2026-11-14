@@ -98,3 +98,47 @@ jobs:
 
       - name: Build AI image
         run: docker build -t buildtrack-ai:ci ./ai_platform
+
+  release-scripts:
+    name: Release scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check shell syntax
+        run: bash -n scripts/*.sh deploy/*.sh
+
+      - name: Test production preflight
+        run: |
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          mkdir -p "$tmp/scripts"
+          cp scripts/prod-preflight.sh "$tmp/scripts/"
+
+          cat > "$tmp/.env" <<'ENV'
+          DOMAIN=buildtrack.test
+          ACME_EMAIL=admin@buildtrack.test
+          SPRING_PROFILES_ACTIVE=prod
+          JWT_SECRET=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          OTP_SECRET=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          OTP_EMAIL_DELIVERY=EMAIL
+          OTP_PHONE_DELIVERY=DISABLED
+          CORS_ORIGINS=https://buildtrack.test
+          VITE_API_URL=https://buildtrack.test
+          VITE_AI_URL=https://buildtrack.test/ai
+          MAIL_FROM=no-reply@buildtrack.test
+          SPRING_MAIL_HOST=smtp.gmail.com
+          SPRING_MAIL_USERNAME=ci@gmail.com
+          SPRING_MAIL_PASSWORD=ci-app-password
+          DB_PASSWORD=ci-db-password
+          DB_ROOT_PASSWORD=ci-root-password
+          VITE_SUPPORT_EMAIL=support@buildtrack.test
+          ENV
+
+          "$tmp/scripts/prod-preflight.sh"
+
+          sed -i 's/^OTP_EMAIL_DELIVERY=EMAIL/OTP_EMAIL_DELIVERY=CONSOLE/' "$tmp/.env"
+          if "$tmp/scripts/prod-preflight.sh"; then
+            echo "preflight accepted CONSOLE email OTP" >&2
+            exit 1
+          fi

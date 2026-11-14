@@ -47,10 +47,10 @@ export default function VerifyOtp() {
 
   return (
     <AuthShell
-      title={isEmail ? t('Verify your email') : t('Verify your mobile number')}
+      title={isEmail ? t('Verify your email') : t('Verify your account')}
       subtitle={isEmail
         ? `${t('Enter the 6-digit code sent to')} ${identifier}`
-        : `${t('Enter the 6-digit code sent to')} +91 ${identifier}`}
+        : t('Enter the 6-digit code we sent to your registered email or mobile number.')}
       footer={<Link to="/register" className="font-medium text-brand-700 hover:underline">{t('Need to make changes? Go back')}</Link>}
     >
       <form onSubmit={submit} className="space-y-5">

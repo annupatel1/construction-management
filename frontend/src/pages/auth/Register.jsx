@@ -69,7 +69,7 @@ export default function Register() {
 
         <Input label={t('Full name')} value={form.name} onChange={set('name')} autoComplete="name" required />
         <Input label={t('Email address')} type="email" value={form.email} onChange={set('email')} autoComplete="email"
-          placeholder="you@example.com" required hint={t('Your primary login and communication email')} />
+          placeholder="you@example.com" required hint={t('Your primary login, OTP and communication email')} />
         <Input label={t('Mobile number')} value={form.phone} onChange={set('phone')} prefix="+91"
           inputMode="numeric" maxLength={14} placeholder="98765 43210" autoComplete="tel" required />
         <Input label={t('Password')} type="password" value={form.password} onChange={set('password')}
@@ -79,7 +79,7 @@ export default function Register() {
 
         <Button type="submit" size="lg" className="w-full" loading={busy}>{t('Create Account')}</Button>
         <p className="text-center text-xs text-ink-500">
-          {t('We will email you a 6-digit code to verify your account.')}
+          {t('We will email you a free 6-digit code to verify your account.')}
         </p>
       </form>
     </AuthShell>

@@ -40,10 +40,13 @@ echo "  docker compose up --build"
 echo
 echo "For production, also set:"
 echo "  SPRING_PROFILES_ACTIVE=prod"
-echo "  OTP_PHONE_DELIVERY=SMS   (with MSG91_AUTH_KEY and MSG91_TEMPLATE_ID)"
-echo "  OTP_EMAIL_DELIVERY=EMAIL (with SPRING_MAIL_* and MAIL_FROM)"
+echo "  OTP_EMAIL_DELIVERY=EMAIL (free email OTP; set SPRING_MAIL_* and MAIL_FROM)"
+echo "  OTP_PHONE_DELIVERY=DISABLED (optional paid SMS: SMS + MSG91_*)"
 echo "  CORS_ORIGINS, AI_ALLOWED_ORIGINS, VITE_API_URL, VITE_AI_URL to your public URLs"
 echo "  DOMAIN and ACME_EMAIL (for the optional Caddy HTTPS proxy)"
+echo
+echo "Validate the production file before starting:"
+echo "  make prod-check"
 echo
 echo "Production with automatic HTTPS:"
 echo "  docker compose --profile proxy up -d --build"

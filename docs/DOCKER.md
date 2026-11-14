@@ -178,7 +178,7 @@ AI_ALLOWED_ORIGINS=https://buildtrack.example.com
 VITE_API_URL=https://buildtrack.example.com
 VITE_AI_URL=https://buildtrack.example.com/ai
 
-# Email OTP (required in production)
+# Email OTP (free and required in production)
 OTP_EMAIL_DELIVERY=EMAIL
 SPRING_MAIL_HOST=smtp.your-provider.com
 SPRING_MAIL_PORT=587
@@ -186,10 +186,11 @@ SPRING_MAIL_USERNAME=...
 SPRING_MAIL_PASSWORD=...
 MAIL_FROM=no-reply@example.com
 
-# SMS OTP (optional; requires an approved MSG91 DLT template)
-OTP_PHONE_DELIVERY=SMS
-MSG91_AUTH_KEY=...
-MSG91_TEMPLATE_ID=...
+# Phone/SMS OTP (optional and paid; requires an approved MSG91 DLT template)
+OTP_PHONE_DELIVERY=DISABLED
+# OTP_PHONE_DELIVERY=SMS
+# MSG91_AUTH_KEY=...
+# MSG91_TEMPLATE_ID=...
 
 # AI (optional; leave empty for demo mode)
 GEMINI_API_KEY=...
@@ -210,7 +211,12 @@ The `prod` profile refuses to start if:
 
 - `JWT_SECRET` or `OTP_SECRET` is shorter than 32 characters or still a development default.
 - `OTP_SECRET` is the same value as `JWT_SECRET`.
-- Either OTP delivery channel is still `CONSOLE`.
+- Email OTP is not enabled (`OTP_EMAIL_DELIVERY=EMAIL`) or SMTP settings are missing.
+- Phone OTP is set to `CONSOLE` (use `DISABLED` or `SMS`).
+- `OTP_PHONE_DELIVERY=SMS` but the MSG91 key/template is missing.
+
+Email OTP is free: a Gmail App Password or a free transactional provider works.
+Phone/SMS OTP stays optional and paid.
 
 If you use an external reverse proxy instead of the built-in Caddy profile, point it
 at `127.0.0.1:3000` (frontend), `127.0.0.1:8080` (API) and `127.0.0.1:8000` (AI),
@@ -277,7 +283,8 @@ docker compose logs db
 Common causes:
 
 - `JWT_SECRET` / `OTP_SECRET` missing in `prod`.
-- SMTP or MSG91 credentials missing while `OTP_*_DELIVERY` is set to `EMAIL` / `SMS`.
+- SMTP credentials missing while `OTP_EMAIL_DELIVERY=EMAIL`; or MSG91 credentials
+  missing while `OTP_PHONE_DELIVERY=SMS`.
 - MySQL still starting — the backend waits for the database health check.
 
 **Port already in use**

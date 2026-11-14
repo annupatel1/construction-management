@@ -22,10 +22,11 @@ Build for production: `npm run build` (output in `dist/`).
 ## Try the whole flow (about 5 minutes)
 
 OTP codes are printed in the **backend console** (IntelliJ) while `OTP_*_DELIVERY` is `CONSOLE`.
+Email OTP is the default and is free; phone/SMS OTP is disabled unless MSG91 is configured.
 
 1. Register accounts (a valid email address and a different 10-digit mobile number starting 6-9 for each
    role): a **House owner**, a **Contractor**, a **Labour**, and optionally an **Engineer**. The app emails
-   a 6-digit verification code; while `OTP_EMAIL_DELIVERY=CONSOLE` the code is printed in the backend console.
+   a free 6-digit verification code; while `OTP_EMAIL_DELIVERY=CONSOLE` the code is printed in the backend console.
 2. **House owner**: Find contractors -> Start project -> pick the contractor, fill details, create.
 3. **Contractor**: open the project -> Labour tab -> Assign labour (pick the labourer, daily rate).
 4. **Contractor**: open the labourer -> mark attendance, pay wages; add material expenses.

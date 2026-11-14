@@ -88,12 +88,17 @@ automatic HTTPS, localhost-only service ports, and backups for MySQL plus upload
 site photos.
 
 ```bash
-# On the server, after setting DOMAIN, ACME_EMAIL and the public VITE_* URLs in .env:
+# On the server, after setting DOMAIN, ACME_EMAIL, free email/SMTP settings
+# and the public VITE_* URLs in .env:
+make prod-check
 make prod-up
 # equivalent to: docker compose --profile proxy up -d --build
 
 make prod-health
 ```
+
+Email OTP is the free default. Phone/SMS OTP is optional and stays disabled with
+`OTP_PHONE_DELIVERY=DISABLED` unless you configure MSG91.
 
 The public traffic path is:
 
@@ -124,7 +129,7 @@ export DB_PASSWORD=root
 ./mvnw spring-boot:run
 ```
 
-Flyway creates or upgrades the schema automatically. In development, OTP codes are printed in the backend log (`OTP_PHONE_DELIVERY=CONSOLE`, `OTP_EMAIL_DELIVERY=CONSOLE`).
+Flyway creates or upgrades the schema automatically. Email OTP is the default and is free. In development, email codes are printed in the backend log (`OTP_EMAIL_DELIVERY=CONSOLE`); phone/SMS OTP is disabled unless you configure MSG91.
 
 ### 2. Frontend
 
@@ -168,13 +173,13 @@ Copy [`.env.example`](.env.example) and set real values before deploying.
 | `JWT_SECRET` | yes | 32+ random characters; signs access tokens |
 | `OTP_SECRET` | yes | HMAC key for OTP hashes (independent of JWT) |
 | `CORS_ORIGINS` | yes | Comma-separated frontend origins |
-| `OTP_PHONE_DELIVERY` | yes | `SMS` (MSG91) in production |
-| `OTP_EMAIL_DELIVERY` | yes | `EMAIL` (SMTP) in production |
-| `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | for SMS | MSG91 DLT-approved template |
-| `SPRING_MAIL_*`, `MAIL_FROM` | for email | SMTP credentials |
+| `OTP_EMAIL_DELIVERY` | yes | `EMAIL` in production; free email OTP is the required channel |
+| `OTP_PHONE_DELIVERY` | no | `DISABLED` by default; `SMS` is optional and paid |
+| `SPRING_MAIL_*`, `MAIL_FROM` | yes | SMTP credentials for free email OTP |
+| `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | for SMS | Optional MSG91 DLT-approved template |
 | `PORT` | no | Defaults to `8080` |
 
-Run production with `SPRING_PROFILES_ACTIVE=prod`. The app refuses to start with development defaults, console OTP delivery, or short secrets.
+Run production with `SPRING_PROFILES_ACTIVE=prod`. The app refuses to start without email/SMTP settings, with console OTP delivery, or with short/reused secrets. A free Gmail App Password or a free transactional provider is enough for email OTP; SMS is optional.
 
 ### Frontend
 
